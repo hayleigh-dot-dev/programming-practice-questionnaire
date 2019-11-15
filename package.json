@@ -1,17 +1,17 @@
 {
-  "name": "",
-  "version": "",
+  "name": "programming-practice-questionnaire",
+  "version": "1.0.0",
   "description": "",
   "main": "",
   "scripts": {
     "dev": "npx parcel src/index.html",
     "deploy": "npx parcel build src/index.html && npx gh-pages -d dist -b master"
   },
-  "author": "",
-  "license": "",
+  "author": "Andrew Thompson",
+  "license": "MIT",
   "repository": {
-    "type": "",
-    "url": ""
+    "type": "git",
+    "url": "https://github.com/pd-andy/programming-practice-questionnaire.git"
   },
   "devDependencies": {
     "elm": "^0.19.1-3",
