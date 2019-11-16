@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --statement-width: 30vw;
+}
+
+ul.likert-scale-3 > li {
+  display: grid;
+  grid-template-columns: var(--statement-width) repeat(3, 1fr);
+}
+
+ul.likert-scale-5 > li {
+  display: grid;
+  grid-template-columns: var(--statement-width) repeat(5, 1fr);
+}
+
+ul.likert-scale-7 > li {
+  display: grid;
+  grid-template-columns: var(--statement-width) repeat(7, 1fr);
+}
