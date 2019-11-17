@@ -125,8 +125,8 @@ toHtml handler likert =
     statements =
       likert.statements |> List.map (viewStatement handler likert.ratings)
   in
-  H.section [ A.class "bg-gray-200 rounded-lg py-4 px-10 m-4" ]
-    [ H.h2 [ A.class "text-bold text-2xl border-b-2 border-black mb-2" ]
+  H.section [ A.class "bg-gray-200 m-4 px-10 py-4 rounded-lg" ]
+    [ H.h2 [ A.class "border-b-2 border-black mb-2 text-2xl text-bold" ]
       [ H.text likert.title ]
     , H.p [ A.class "mb-4 text-justify" ] [ H.text likert.description ]
     , H.ul [ A.class <| "likert-scale-" ++ (String.fromInt << List.length) likert.ratings ]
