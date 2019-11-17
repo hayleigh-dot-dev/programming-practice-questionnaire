@@ -5,7 +5,8 @@
   "main": "",
   "scripts": {
     "dev": "npx parcel src/index.html",
-    "deploy": "npx parcel build src/index.html && npx gh-pages -d dist -b master"
+    "build:prod": "npx parcel build src/index.html --public-url /programming-practice-questionnaire/ --no-source-maps --no-content-hash",
+    "deploy": "npm run build:prod && npx gh-pages -d dist -b master"
   },
   "author": "Andrew Thompson",
   "license": "MIT",
