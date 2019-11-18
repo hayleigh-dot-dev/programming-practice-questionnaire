@@ -19,9 +19,11 @@ type alias Scale =
   , description : String
   }
 
+-- 
 type alias Statement =
   ( Int, String )
 
+--
 type alias Rating =
   ( Int, String )
 
@@ -158,6 +160,6 @@ viewLabels : List Rating -> Html msg
 viewLabels ratings =
   H.li [ A.class "mb-4" ]
     ( H.br [] [] :: (ratings |> List.map (\( _, label ) ->
-      H.span [ A.class "inline-block text-center" ]
+      H.span [ A.class "text-center" ]
         [ H.text label ]
     )))
