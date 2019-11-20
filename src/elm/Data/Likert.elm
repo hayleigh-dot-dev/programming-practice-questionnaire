@@ -9,6 +9,7 @@ module Data.Likert exposing
 import Html as H exposing (Html)
 import Html.Attributes as A
 import Html.Events as E
+import Ui.Section as Ui
 import Set exposing (Set)
 
 -- Types -----------------------------------------------------------------------
@@ -124,14 +125,12 @@ toHtml handler likert =
       viewLabels likert.ratings
 
     statements : List (Html msg)
-    statements =
+    statements =  
       likert.statements |> List.map (viewStatement handler likert.ratings)
   in
-  H.section [ A.class "bg-gray-200 m-4 px-10 py-4 rounded-lg" ]
-    [ H.h2 [ A.class "border-b-2 border-black mb-2 text-2xl text-bold" ]
-      [ H.text likert.title ]
-    , H.p [ A.class "mb-4 text-justify" ] [ H.text likert.description ]
-    , H.ul [ A.class <| "likert-scale-" ++ (String.fromInt << List.length) likert.ratings ]
+  Ui.section likert.title likert.description
+    [ A.attribute "data-likert" <| (String.fromInt << List.length) likert.ratings ]
+    [ H.ul []
       ( labels :: statements )
     ]
 

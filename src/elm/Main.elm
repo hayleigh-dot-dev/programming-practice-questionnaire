@@ -11,6 +11,7 @@ import Html.Events as E
 import Set exposing (Set)
 
 import Data.Likert
+import Data.QSort
 
 -- Main ------------------------------------------------------------------------
 main : Program Flags Model Msg
@@ -28,6 +29,7 @@ type alias Flags =
 
 type alias Model =
   { questionnaire : Dict String Data.Likert.Scale
+  , qsort : Data.QSort.BasicSort
   }
 
 scaleOne : Data.Likert.Scale
@@ -77,6 +79,17 @@ scaleTwo =
   in
   Data.Likert.fivePointScale title description statements
 
+basicSort : Data.QSort.BasicSort
+basicSort =
+  Data.QSort.createBasicSort "Language features" ""
+    (Set.fromList
+      [ "this is a feature"
+      , "this is another feature"
+      , "and another one"
+      , "and so on"
+      , "and so on"
+      ])
+
 init : Flags -> ( Model, Cmd Msg )
 init flags =
   ( { questionnaire =
@@ -84,6 +97,7 @@ init flags =
           [ ( "The extent to which the end-goal is defined.", scaleOne )
           , ( "The extent of programming effort, over time, and in the size of the resulting codebase", scaleTwo )
           ]
+    , qsort = basicSort
     }
   , Cmd.none
   )
@@ -91,6 +105,8 @@ init flags =
 -- Update ----------------------------------------------------------------------
 type Msg
   = CheckItem String String Int
+  | SelectBasicItem String
+  | SortBasicItem Data.QSort.BasicCategory
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -102,11 +118,39 @@ update msg model =
       , Cmd.none
       )
 
+    SelectBasicItem item ->
+      ( { model
+        | qsort = Data.QSort.selectBasicItem item model.qsort
+        }
+      , Cmd.none
+      )
+
+    SortBasicItem category ->
+      ( { model
+        | qsort = Data.QSort.sortBasicItem category model.qsort
+        }
+      , Cmd.none
+      )
+
 -- View ------------------------------------------------------------------------
 view : Model -> Html Msg
 view model =
-  H.main_ [ A.class "container mx-auto" ] (Dict.toList model.questionnaire |> List.map
-    (\( k, scale ) -> Data.Likert.toHtml (CheckItem k) scale)
+  let
+    likert : List (Html Msg)
+    likert =
+      Dict.toList model.questionnaire
+        |> List.map (\( k, scale ) -> Data.Likert.toHtml (CheckItem k) scale )
+
+    qsort : List (Html Msg)
+    qsort =
+      Data.QSort.viewBasicSort SelectBasicItem SortBasicItem model.qsort
+        |> List.singleton
+
+  in
+  H.main_ [ A.class "container mx-auto" ] (List.concat
+    [ likert
+    , qsort
+    ]
   )
 
 -- Subscriptions ---------------------------------------------------------------

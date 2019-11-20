@@ -3,18 +3,27 @@
   --statement-width: 30vw;
 }
 
-ul.likert-scale-3 > li {
+section[data-likert="3"] > .container >  ul > li {
   display: grid;
   grid-template-columns: var(--statement-width) repeat(3, 1fr);
 }
 
-ul.likert-scale-5 > li {
+section[data-likert="5"] > .container > ul > li {
   display: grid;
   grid-template-columns: var(--statement-width) repeat(5, 1fr);
 }
 
-ul.likert-scale-7 > li {
+section[data-likert="7"] > .container >  ul > li {
   display: grid;
   grid-template-columns: var(--statement-width) repeat(7, 1fr);
+}
+
+section[data-q-sort="basic"] > .container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+section[data-q-sort="normal"] > .container {
+
 }
 /* purgecss end ignore */
