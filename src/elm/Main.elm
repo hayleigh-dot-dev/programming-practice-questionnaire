@@ -7,12 +7,10 @@ import Browser
 import Data.Likert exposing (LikertScale)
 import Data.Tuple as Tuple exposing (Tuple)
 import Data.QSort exposing (QSort)
-import Dict exposing (Dict)
 import Html as H exposing (Html)
 import Html.Attributes as A
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
-import Set
 import Ui.Section
 
 -- Ports -----------------------------------------------------------------------
@@ -142,7 +140,7 @@ viewError =
 
 -- Subscriptions ---------------------------------------------------------------
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
   Sub.batch
     [
     ]

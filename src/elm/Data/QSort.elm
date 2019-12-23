@@ -8,7 +8,6 @@ module Data.QSort exposing
   )
 
 -- Imports ---------------------------------------------------------------------
-import Array exposing (Array)
 import Html as H exposing (Html)
 import Html.Attributes as A
 import Html.Events as E
@@ -16,7 +15,7 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import Maybe.Extra as Maybe
 import Set exposing (Set)
-import Ui.Colour exposing (Colour)
+import Ui.Colour
 import Ui.Button
 import Ui.Section
 
@@ -294,7 +293,7 @@ viewBasicSort events { title, description, statements, unsorted, selected } =
 
 --
 viewNormalSort : Events msg -> NormalData -> Html msg
-viewNormalSort events { title, description, statements, unsorted, selected, length, shape } =
+viewNormalSort events { title, description, statements, unsorted, selected, shape } =
   Ui.Section.standard title description
     [ A.attribute "data-q-sort" "normal" ]
     [ H.div [ A.class "flex h-96" ]

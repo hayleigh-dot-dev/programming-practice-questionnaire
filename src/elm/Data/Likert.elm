@@ -8,7 +8,6 @@ module Data.Likert exposing
   )
 
 -- Imports ---------------------------------------------------------------------
-import Dict exposing (Dict)
 import Html as H exposing (Html)
 import Html.Attributes as A
 import Html.Events as E
