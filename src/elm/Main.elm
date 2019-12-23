@@ -5,7 +5,7 @@ port module Main exposing
 -- Imports ---------------------------------------------------------------------
 import Browser
 import Data.Likert exposing (LikertScale)
-import Data.Tuple as Tuple exposing (Tuple)
+import Tuple.Extra as Tuple exposing (Tuple)
 import Data.QSort exposing (QSort)
 import Html as H exposing (Html)
 import Html.Attributes as A

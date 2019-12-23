@@ -15,7 +15,7 @@ import Json.Encode as Encode
 import Json.Decode as Decode exposing (Decoder)
 import Ui.Section
 import Set exposing (Set)
-import Data.Tuple as Tuple exposing (Tuple)
+import Tuple.Extra as Tuple exposing (Tuple)
 
 -- Types -----------------------------------------------------------------------
 type alias LikertScale =
