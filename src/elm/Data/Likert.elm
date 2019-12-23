@@ -1,92 +1,89 @@
 module Data.Likert exposing
-  ( Scale, scale
+  ( LikertScale, init
+  , Rating
   , threePointScale, fivePointScale, sevenPointScale
   , rate
   , toHtml
+  , encode, decoder
   )
 
 -- Imports ---------------------------------------------------------------------
+import Dict exposing (Dict)
 import Html as H exposing (Html)
 import Html.Attributes as A
 import Html.Events as E
-import Ui.Section as Ui
+import Json.Encode as Encode
+import Json.Decode as Decode exposing (Decoder)
+import Ui.Section
 import Set exposing (Set)
+import Data.Tuple as Tuple exposing (Tuple)
 
 -- Types -----------------------------------------------------------------------
-type alias Scale =
-  { statements : List Statement
-  , ratings : List Rating
-  , title : String
+type alias LikertScale =
+  { title : String
   , description : String
+  , statements : List Statement
+  , ratings : List Rating
   }
+
+type Rating
+  = StronglyDisagree
+  | Disagree
+  | SomewhatDisagree
+  | Neutral
+  | SomewhatAgree
+  | Agree
+  | StronglyAgree
 
 -- 
 type alias Statement =
-  ( Int, String )
-
---
-type alias Rating =
-  ( Int, String )
+  Tuple Rating String
 
 -- Functions -------------------------------------------------------------------
---
-ratingsFromMedian : Int -> Int -> List Int
-ratingsFromMedian count median =
-  List.range (median - count // 2) (median + count // 2)
-
-scale : String -> String -> Set String -> List String -> Scale
-scale title description statements labels =
-  let
-    zip : List a -> List b -> List ( a, b )
-    zip xs ys =
-      List.map2 Tuple.pair xs ys
-
-    ratingValues : List Int
-    ratingValues =
-      ratingsFromMedian (List.length labels) 0
-  in
-  { statements = (Set.toList >> List.map (Tuple.pair 0)) statements
-  , ratings = zip ratingValues labels
-  , title = title
+init : String -> String -> Set String -> List Rating -> LikertScale
+init title description statements ratings =
+  { title = title
   , description = description
+  , statements = (Set.toList >> List.map (Tuple.pair Neutral)) statements
+  , ratings = ratings
   }
 
 --
-threePointScale : String -> String -> Set String -> Scale
+threePointScale : String -> String -> Set String -> LikertScale
 threePointScale title description statements =
-  scale title description statements
-    [ "Disagree"
-    , "Neutral"
-    , "Agree"
+  init title description statements
+    [ Disagree
+    , Neutral
+    , Agree
     ]
 
 --
-fivePointScale : String -> String -> Set String -> Scale
+fivePointScale : String -> String -> Set String -> LikertScale
 fivePointScale title description statements =
-  scale title description statements
-    [ "Strongly Disagree"
-    , "Disagree"
-    , "Neutral"
-    , "Agree"
-    , "Strongly Agree"
+  init title description statements
+    [ StronglyDisagree
+    , Disagree
+    , Neutral
+    , Agree
+    , StronglyAgree
     ]
 
 --
-sevenPointScale : String -> String -> Set String -> Scale
+sevenPointScale : String -> String -> Set String -> LikertScale
 sevenPointScale title description statements =
-  scale title description statements
-    [ "Strongly Disagree"
-    , "Disagree"
-    , "Somewhat Disagree"
-    , "Neutral"
-    , "Somewhat Agree"
-    , "Agree"
-    , "Strongly Agree"
+  init title description statements
+    [ StronglyDisagree
+    , Disagree
+    , SomewhatDisagree
+    , Neutral
+    , SomewhatAgree
+    , Agree
+    , StronglyAgree
     ]
 
 --
-rate : String -> Int -> Scale -> Scale
-rate statement value likertScale =
+rate : String -> Rating -> LikertScale -> LikertScale
+rate statement rating scale =
   let
     -- Taken from List.Extra; updates an item in a list if it satisfies some
     -- predicate function.
@@ -94,54 +91,53 @@ rate statement value likertScale =
     updateIf predicate f =
       List.map (\a -> if predicate a then f a else a)
 
-    -- This ensures that if erroneous ratings come in that are out of range that
-    -- we default to the middle rating (which should be neutral).
-    rateWithDefault : Int -> List Int -> Int
-    rateWithDefault rating range =
-      if List.member rating range then
-        rating
-      else
-        List.sum range // 2
-    
-    ratingValues : List Int
-    ratingValues =
-      likertScale.ratings |> List.map Tuple.first
-
     statements : List Statement
     statements =
-      likertScale.statements |> updateIf
+      scale.statements |> updateIf
         (Tuple.second >> (==) statement)
-        (Tuple.mapFirst (always (rateWithDefault value ratingValues)))
+        (Tuple.mapFirst (always rating))
   in
-  { likertScale | statements = statements }
+  { scale | statements = statements }
 
 -- View ------------------------------------------------------------------------
 --
-toHtml : (String -> Int -> msg) -> Scale -> Html msg
-toHtml handler likert =
+ratingToString : Rating -> String
+ratingToString rating =
+  case rating of
+    StronglyDisagree  -> "Strongly Disagree"
+    Disagree          -> "Disagree"
+    SomewhatDisagree  -> "Somewhat Disagree"
+    Neutral           -> "Neutral"
+    SomewhatAgree     -> "Somewhat Agree"
+    Agree             -> "Agree"
+    StronglyAgree     -> "Strongly Agree"
+
+--
+toHtml : (String -> Rating -> msg) -> LikertScale -> Html msg
+toHtml handler scale =
   let
     labels : Html msg
     labels =
-      viewLabels likert.ratings
+      viewLabels scale.ratings
 
     statements : List (Html msg)
     statements =  
-      likert.statements |> List.map (viewStatement handler likert.ratings)
+      scale.statements |> List.map (viewStatement handler scale.ratings)
   in
-  Ui.section likert.title likert.description
-    [ A.attribute "data-likert" <| (String.fromInt << List.length) likert.ratings ]
+  Ui.Section.standard scale.title scale.description
+    [ A.attribute "data-likert" <| (String.fromInt << List.length) scale.ratings ]
     [ H.ul []
       ( labels :: statements )
     ]
 
 --
-viewStatement : (String -> Int -> msg) -> List Rating -> Statement -> Html msg
+viewStatement : (String -> Rating -> msg) -> List Rating -> Statement -> Html msg
 viewStatement handler ratings ( currentRating, statement ) =
   let
     -- 
     radios : List (Html msg)
     radios =
-      ratings |> List.map (Tuple.first >> \r ->
+      ratings |> List.map (\r ->
         H.span [ A.class "flex justify-center" ]
           [ H.input 
             [ A.type_ "radio", A.checked (r == currentRating)
@@ -158,7 +154,59 @@ viewStatement handler ratings ( currentRating, statement ) =
 viewLabels : List Rating -> Html msg
 viewLabels ratings =
   H.li [ A.class "mb-4" ]
-    ( H.br [] [] :: (ratings |> List.map (\( _, label ) ->
+    ( H.br [] [] :: (ratings |> List.map (\r ->
       H.span [ A.class "text-center" ]
-        [ H.text label ]
+        [ H.text <| ratingToString r ]
     )))
+
+-- JSON ------------------------------------------------------------------------
+encode : LikertScale -> Encode.Value
+encode { title, description, statements, ratings } =
+  let
+    encodeStatement : Statement -> Encode.Value
+    encodeStatement (rating, statement) =
+      Encode.object
+        [ ("rating", Encode.string (ratingToString rating))
+        , ("statement", Encode.string statement)
+        ]
+  in
+  Encode.object
+    [ ("title", Encode.string title)
+    , ("description", Encode.string description)
+    , ("statements", Encode.list encodeStatement statements)
+    , ("ratings", Encode.list Encode.string <| List.map ratingToString ratings)
+    ]
+
+decoder : Decoder LikertScale
+decoder =
+  let
+    statementDecoder : Decoder Statement
+    statementDecoder =
+      Decode.oneOf
+        [ Decode.map2 Tuple.pair
+            (Decode.field "rating" ratingDecoder)
+            (Decode.field "statement" Decode.string)
+        , Decode.map (Tuple.pair Neutral)
+            (Decode.field "statement" Decode.string)
+        ]
+
+    ratingDecoder : Decoder Rating
+    ratingDecoder =
+      Decode.string |> Decode.andThen (\r ->
+        case r of
+          "Strongly Disagree" -> Decode.succeed StronglyDisagree
+          "Disagree"          -> Decode.succeed Disagree
+          "Somewhat Disagree" -> Decode.succeed SomewhatDisagree
+          "Neutral"           -> Decode.succeed Neutral
+          "Somewhat Agree"    -> Decode.succeed SomewhatAgree
+          "Agree"             -> Decode.succeed Agree
+          "Strongly Agree"    -> Decode.succeed StronglyAgree
+          _                   -> Decode.fail r
+      )
+
+  in
+  Decode.map4 LikertScale
+    (Decode.field "title" Decode.string)
+    (Decode.field "description" Decode.string)
+    (Decode.field "statements" <| Decode.list statementDecoder)
+    (Decode.field "ratings" <| Decode.list ratingDecoder)

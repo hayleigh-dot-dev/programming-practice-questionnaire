@@ -19,8 +19,7 @@ section[data-likert="7"] > .container >  ul > li {
 }
 
 section[data-q-sort="basic"] > .container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+
 }
 
 section[data-q-sort="normal"] > .container {

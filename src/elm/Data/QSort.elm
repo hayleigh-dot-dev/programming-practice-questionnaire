@@ -1,101 +1,168 @@
 module Data.QSort exposing
-  ( BasicSort, BasicCategory
-  , createBasicSort, selectBasicItem, sortBasicItem
-  , viewBasicSort
-  --
-  , QuasiNormalSort
-  , fromBasicSort
-  , viewNormalSort
+  ( QSort, init
+  , Statement, Rating
+  , select, rate, sort
+  , stepForward, stepBackward
+  , toHtml
+  , encode, decoder
   )
 
 -- Imports ---------------------------------------------------------------------
+import Array exposing (Array)
 import Html as H exposing (Html)
 import Html.Attributes as A
 import Html.Events as E
-import Ui.Section as Ui
+import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
+import Maybe.Extra as Maybe
 import Set exposing (Set)
+import Ui.Colour exposing (Colour)
+import Ui.Button
+import Ui.Section
 
 -- Types -----------------------------------------------------------------------
-type alias BasicSort =
-  { negative : List String
-  , neutral : List String
-  , positive : List String
-  , unsorted : List String
-  , selected : Maybe String
-  , title : String
+type QSort
+  = Basic BasicData
+  | Normal NormalData
+
+type alias BasicData =
+  { title : String
   , description : String
+  , statements : List Statement
+  , unsorted : List Statement
+  , selected : Maybe Statement
   }
 
-type alias QuasiNormalSort =
-  { basic : BasicSort
+type alias NormalData =
+  { title : String
+  , description : String
+  , statements : List (Maybe Statement)
+  , unsorted : List Statement
+  , selected : Maybe Statement
   , length : Int
-  , items : List (Maybe String)
+  , shape : List Int
   }
 
-type BasicCategory
+type alias Statement =
+  { title : String
+  , key : String
+  , description : List String
+  , image : Maybe String
+  , rating : Rating
+  }
+
+type Rating
   = Negative
   | Neutral
   | Positive
 
--- Constants -------------------------------------------------------------------
-
+type alias Events msg =
+  { selectMsg : Statement -> msg
+  , rateMsg : Rating -> msg
+  , sortMsg : Int -> msg
+  , stepForward : msg
+  , stepBackward : msg
+  }
 
 -- Functions -------------------------------------------------------------------
 --
-createBasicSort : String -> String -> Set String -> BasicSort
-createBasicSort title description items =
-  { negative = []
-  , neutral = []
-  , positive = []
-  , unsorted = Set.toList items
-  , selected = Nothing
-  , title = title
-  , description = description
-  }
-
---
-selectBasicItem : String -> BasicSort -> BasicSort
-selectBasicItem item sort =
-  if List.member item sort.unsorted then
-    { sort
-    | selected = Just item
-    }
-  else
-    { sort
-    | selected = Nothing
+init : String -> String -> Set String -> QSort
+init title description items =
+  Basic
+    { title = title
+    , description = description
+    , statements = []
+    , unsorted = Set.toList items |> List.map (\s -> Statement s "" [] Nothing Neutral)
+    , selected = Nothing
     }
 
 --
-sortBasicItem : BasicCategory -> BasicSort -> BasicSort
-sortBasicItem category sort =
-  let
-    sortItem : String -> BasicSort
-    sortItem item =
-      case category of
-        Negative ->
-          { sort
-          | unsorted = List.filter ((/=) item) sort.unsorted
-          , negative = item :: sort.negative
-          }
+select : Statement -> QSort -> QSort
+select statement qsort =
+  case qsort of
+    Basic ({ statements, unsorted, selected } as data) ->
+      if Just statement == selected then
+        Basic { data | selected = Nothing }
+      else if List.member statement statements || List.member statement unsorted then
+        Basic { data | selected = Just statement }
+      else
+        Basic { data | selected = Nothing }
 
-        Neutral ->
-          { sort
-          | unsorted = List.filter ((/=) item) sort.unsorted
-          , neutral = item :: sort.neutral
-          }
-
-        Positive ->
-          { sort
-          | unsorted = List.filter ((/=) item) sort.unsorted
-          , positive = item :: sort.positive
-          }
-  in
-  Maybe.map sortItem sort.selected
-    |> Maybe.withDefault sort
+    Normal ({ statements, unsorted, selected } as data) ->
+      if Just statement == selected then
+        Normal { data | selected = Nothing }
+      else if List.member (Just statement) statements || List.member statement unsorted then
+        Normal { data | selected = Just statement }
+      else
+        Normal { data | selected = Nothing }
 
 --
-fromBasicSort : BasicSort -> QuasiNormalSort
-fromBasicSort ({ negative, neutral, positive } as sort) =
+rate : Rating -> QSort -> QSort
+rate rating qsort =
+  case qsort of
+    Basic ({ selected, statements, unsorted } as data) ->
+      Basic
+        { data
+        | unsorted = 
+            unsorted |> List.filterMap (Just >> (\s -> 
+              if s == selected then 
+                Nothing 
+              else 
+                s
+            ))
+        , statements =
+            statements
+              |> List.filterMap (Just >> (\s -> if s == selected then Nothing else s))
+              |> Just
+              |> Maybe.map2 (::) (Maybe.map (\s -> { s | rating = rating }) selected)
+              |> Maybe.withDefault statements
+        , selected =
+            Nothing
+        }
+
+    Normal ({ selected, statements, unsorted } as data) ->
+      Normal
+        { data
+        | unsorted =
+            unsorted |> List.filterMap (Just >> Maybe.map (\s ->
+              if Just s == selected then 
+                { s | rating = rating}
+              else
+                s
+            ))
+        , statements =
+            statements |> List.map (Maybe.map (\s ->
+              if Just s == selected then
+                { s | rating = rating }
+              else
+                s
+            )) 
+        }
+
+--
+sort : Int -> QSort -> QSort
+sort position qsort =
+  case qsort of
+    Basic data ->
+      Basic data
+
+    Normal ({ selected, statements } as data) ->
+      Normal
+        { data
+        | statements =
+            statements |> List.indexedMap (\i s ->
+              if i == position && Maybe.isJust selected then
+                selected
+              else if i /= position && s == selected then
+                Nothing
+              else
+                s
+            )
+        }
+
+--
+stepForward : QSort -> QSort
+stepForward qsort =
   let
     nearestSquare : Int -> Int
     nearestSquare n =
@@ -104,71 +171,376 @@ fromBasicSort ({ negative, neutral, positive } as sort) =
         |> Basics.round
         |> \x -> x ^ 2
 
-    length : Int
-    length =
-      List.length negative + List.length neutral + List.length positive
-        |> nearestSquare
-
+    squareRoot : Int -> Int
+    squareRoot n =
+      Basics.toFloat n
+       |> Basics.sqrt
+       |> Basics.round
   in
-  { basic = sort
-  , length = length
-  , items = List.repeat length Nothing
-  }
+  case qsort of
+    Basic { title, description, statements } ->
+      Normal
+        { title = title
+        , description = description
+        , statements = List.repeat (List.length statements |> nearestSquare) Nothing
+        , unsorted = statements
+        , selected = Nothing
+        , length = List.length statements |> nearestSquare
+        , shape = 
+            List.length statements 
+              |> nearestSquare 
+              |> squareRoot
+              |> (\root -> List.range 1 root ++ (List.reverse <| List.range 1 <| root - 1))
+        }
 
- -- View -----------------------------------------------------------------------
-viewBasicSort : (String -> msg) -> (BasicCategory -> msg) -> BasicSort -> Html msg
-viewBasicSort clickHandler categoryHandler sort =
-  Ui.section sort.title sort.description
+    Normal data ->
+      Normal data
+
+--
+stepBackward : QSort -> QSort
+stepBackward qsort =
+  case qsort of
+    Basic data ->
+      Basic data
+
+    Normal { title, description, statements, unsorted } ->
+      Basic
+        { title = title
+        , description = description
+        , statements = []
+        , unsorted = unsorted ++ List.filterMap identity statements
+        , selected = Nothing
+        }
+
+-- View ------------------------------------------------------------------------
+--
+toHtml : Events msg -> QSort -> Html msg
+toHtml events qsort =
+  case qsort of
+    Basic data ->
+      viewBasicSort events data
+
+    Normal data ->
+      viewNormalSort events data
+
+--
+viewBasicSort : Events msg -> BasicData -> Html msg
+viewBasicSort events { title, description, statements, unsorted, selected } =
+  Ui.Section.standard title description
     [ A.attribute "data-q-sort" "basic" ]
-    [ H.div [ A.class "px-2" ]
-      -- Unsorted items
-      [ H.div [ A.class "flex justify-between mb-4" ]
-        [ H.button [ A.class "flex-grow bg-gray-300 mr-2 hover:bg-gray-500 p-2 rounded", E.onClick (categoryHandler Negative) ] 
-          [ H.text "Negative"]
-        , H.button [ A.class "flex-grow bg-gray-300 hover:bg-gray-500 p-2 rounded", E.onClick (categoryHandler Neutral) ] 
-          [ H.text "Neutral"]
-        , H.button [ A.class "flex-grow bg-gray-300 ml-2 hover:bg-gray-500 p-2 rounded", E.onClick (categoryHandler Positive) ] 
-          [ H.text "Positive"]
+    [ H.div [ A.class "flex my-2 h-96" ]
+      [ H.div [ A.class "flex-1 mr-4" ]
+        [ viewStatementList selected events.selectMsg unsorted ]
+      , H.div [ A.class "flex-1 overflow-y-scroll overflow-x-hidden" ]
+        [ selected |> Maybe.map viewStatementInfo
+            |> Maybe.withDefault (H.text "")
         ]
-      , H.ul [ A.class "bg-gray-400 rounded-lg h-64 overflow-y-scroll p-2" ]
-        ( sort.unsorted |> List.map (\item -> H.text item |> List.singleton |> H.li 
-          [ A.class "hover:bg-gray-600 p-2 rounded cursor-pointer"
-          , A.class (if sort.selected == Just item then "bg-gray-500" else "")
-          , E.onClick (clickHandler item) 
-          ]
-        ))
       ]
-    , H.div [ A.class "px-2" ]
-      -- Negative items
-      [ H.div [ A.class "bg-gray-400 rounded-lg h-48 mb-4 p-2 overflow-y-scroll" ]
-        [ H.h2 [ A.class "text-lg font-bold" ] [ H.text "Negative" ]
-        , H.ul [ A.attribute "data-q-sort" "category" ]
-          ( sort.negative |> List.map (H.text >> List.singleton >>
-            H.li [])
-          )
+    , H.div [ A.class "flex my-2" ]
+      [ Ui.Button.builder
+          |> Ui.Button.withText "Negative"
+          |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.red)
+          |> Ui.Button.withHandler (events.rateMsg Negative)
+          |> Ui.Button.withClass "flex-1 p-2 mr-4" 
+          |> Ui.Button.toHtml
+      , Ui.Button.builder
+          |> Ui.Button.withText "Neutral"
+          |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.grey)
+          |> Ui.Button.withHandler (events.rateMsg Neutral)
+          |> Ui.Button.withClass "flex-1 p-2 mx-2" 
+          |> Ui.Button.toHtml
+      , Ui.Button.builder
+          |> Ui.Button.withText "Positive"
+          |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.green)
+          |> Ui.Button.withHandler (events.rateMsg Positive)
+          |> Ui.Button.withClass "flex-1 p-2 ml-4" 
+          |> Ui.Button.toHtml
+      ]
+    , H.div [ A.class "flex mt-4 h-64" ]
+      [ H.div [ A.class "flex-1 mr-4" ]
+        [ List.filter (.rating >> (==) Negative) statements
+            |> viewStatementList selected events.selectMsg
         ]
-      -- Neutral items
-      , H.div [ A.class "bg-gray-400 rounded-lg h-48 mb-4 p-2 overflow-y-scroll" ]
-        [ H.h2 [ A.class "text-lg font-bold" ] [ H.text "Neutral" ]
-        , H.ul [ A.attribute "data-q-sort" "category" ]
-          ( sort.neutral |> List.map (H.text >> List.singleton >>
-            H.li [])
-          )
+      , H.div [ A.class "flex-1 mx-2" ]
+        [ List.filter (.rating >> (==) Neutral) statements
+            |> viewStatementList selected events.selectMsg
         ]
-      -- Positive items
-      , H.div [ A.class "bg-gray-400 rounded-lg h-48 p-2 overflow-y-scroll" ]
-        [ H.h2 [ A.class "text-lg font-bold" ] [ H.text "Positive" ]
-        , H.ul [ A.attribute "data-q-sort" "category" ]
-          ( sort.positive |> List.map (H.text >> List.singleton >>
-            H.li [])
-          )
+      , H.div [ A.class "flex-1 ml-4" ]
+        [ List.filter (.rating >> (==) Positive) statements
+            |> viewStatementList selected events.selectMsg
         ]
+      ]
+      , H.div [ A.class "flex mb-4" ]
+        [ Ui.Button.builder
+          |> Ui.Button.withText "Next Step"
+          |> Ui.Button.withColour (
+            if List.isEmpty unsorted then
+              Ui.Colour.blue
+            else
+              Ui.Colour.grey
+          )
+          |> Ui.Button.withHandler events.stepForward
+          |> Ui.Button.withClass "flex-1 p-2"
+          |> Ui.Button.withClass (
+            if List.isEmpty unsorted then
+              ""
+            else
+              "cursor-not-allowed"
+          )
+          |> Ui.Button.withAttr (A.disabled (not <| List.isEmpty unsorted))
+          |> Ui.Button.toHtml
+        ]
+    ]
+
+--
+viewNormalSort : Events msg -> NormalData -> Html msg
+viewNormalSort events { title, description, statements, unsorted, selected, length, shape } =
+  Ui.Section.standard title description
+    [ A.attribute "data-q-sort" "normal" ]
+    [ H.div [ A.class "flex h-96" ]
+      ( selected |> Maybe.map viewSplitStatementInfo
+          |> Maybe.withDefault [ H.text "" ]
+      )
+    , H.hr [ A.class "border border-black mb-4" ] []
+    , H.div [ A.class "flex justify-between my-2" ]
+        ( List.indexedMap Tuple.pair statements
+            |> viewNormalDistribution events.selectMsg events.sortMsg selected shape
+        )
+    , H.hr [ A.class "border border-black mb-4" ] []
+    , H.div [ A.class "flex my-2" ]
+      [ Ui.Button.builder
+          |> Ui.Button.withText "Negative"
+          |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.red)
+          |> Ui.Button.withHandler (events.rateMsg Negative)
+          |> Ui.Button.withClass "flex-1 p-2 mr-4" 
+          |> Ui.Button.toHtml
+      , Ui.Button.builder
+          |> Ui.Button.withText "Neutral"
+          |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.grey)
+          |> Ui.Button.withHandler (events.rateMsg Neutral)
+          |> Ui.Button.withClass "flex-1 p-2 mx-2" 
+          |> Ui.Button.toHtml
+      , Ui.Button.builder
+          |> Ui.Button.withText "Positive"
+          |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.green)
+          |> Ui.Button.withHandler (events.rateMsg Positive)
+          |> Ui.Button.withClass "flex-1 p-2 ml-4" 
+          |> Ui.Button.toHtml
+      ]
+    , H.div [ A.class "flex my-2 h-64" ]
+      [ H.div [ A.class "flex-1 mr-4" ]
+        [ List.filter (.rating >> (==) Negative) unsorted
+            |> viewStatementList selected events.selectMsg
+        ]
+      , H.div [ A.class "flex-1 mx-2" ]
+        [ List.filter (.rating >> (==) Neutral) unsorted
+            |> viewStatementList selected events.selectMsg
+        ]
+      , H.div [ A.class "flex-1 ml-4" ]
+        [ List.filter (.rating >> (==) Positive) unsorted
+            |> viewStatementList selected events.selectMsg
+        ]
+      ]
+    , H.div [ A.class "flex mb-4" ]
+      [ Ui.Button.builder
+          |> Ui.Button.withText "Prev Step"
+          |> Ui.Button.withColour Ui.Colour.blue
+          |> Ui.Button.withHandler events.stepBackward
+          |> Ui.Button.withClass "flex-1 p-2"
+          |> Ui.Button.toHtml
       ]
     ]
 
-viewNormalSort : QuasiNormalSort -> Html msg
-viewNormalSort sort =
-  Ui.section sort.basic.title sort.basic.description
-    [ A.attribute "data-q-sort" "normal" ]
-    [
+--
+ratingToString : Rating -> String
+ratingToString rating =
+  case rating of
+    Negative  -> "Negative"
+    Neutral   -> "Neutral"
+    Positive  -> "Positive"
+
+--
+viewStatementList : Maybe Statement -> (Statement -> msg) -> List Statement -> Html msg
+viewStatementList selected handler statements =
+  H.ul [ A.class "h-full overflow-y-scroll overflow-x-hidden" ]
+    ( statements |> List.map (\statement ->
+        viewStatementItem (Just statement == selected) (handler statement) statement
+      )
+    ) 
+
+--
+viewStatementItem : Bool -> msg -> Statement ->  Html msg
+viewStatementItem active handler { title, key } =
+  H.li 
+    [ E.onClick handler
+    , A.class "cursor-pointer my-2 p-2"
+    , if active then
+        A.class "bg-blue-300 hover:bg-blue-500"
+      else
+        A.class "bg-gray-300 hover:bg-gray-400"
+    ] 
+    [ H.span [ A.class "font-bold pr-2" ] [ H.text <| "[" ++ key ++ "]" ]
+    , H.span [ A.class "text-justify" ] [ H.text title ]
+     ]
+
+viewStatementInfo : Statement -> Html msg
+viewStatementInfo { title, description, image } =
+  H.div
+    []
+    [ H.h3 [ A.class "text-xl font-bold" ] 
+      [ H.text title ]
+    , H.div [] ( description |> List.map (\text ->
+        H.p [ A.class "text-justify py-2 pr-4" ] 
+          [ H.text text ]
+      ))
+    , image |> Maybe.map (\src ->
+        H.img [ A.src src, A.class "w-full" ] []
+      ) |> Maybe.withDefault (H.text "")
     ]
+
+viewSplitStatementInfo : Statement -> List (Html msg)
+viewSplitStatementInfo { title, description, image } =
+  [ H.div [ A.class "flex-1 pr-4" ]
+    [ H.h3 [ A.class "text-xl font-bold" ] 
+      [ H.text title ]
+    , H.div [] ( description |> List.map (\text ->
+        H.p [ A.class "py-2 text-justify" ] 
+          [ H.text text ]
+      ))
+    ]
+  , H.div [ A.class "flex-1 pl-4" ]
+    [ image |> Maybe.map (\src ->
+        H.img [ A.src src, A.class "w-full" ] []
+      ) |> Maybe.withDefault (H.text "")
+    ]
+  ]
+
+--
+viewNormalDistribution : (Statement -> msg) -> (Int -> msg) -> Maybe Statement -> List Int -> List (Int, Maybe Statement) -> List (Html msg)
+viewNormalDistribution selectMsg sortMsg selectedStatement items statements =
+  List.foldl (\n  (ns, ss) -> List.take n ss |> (\ss_ -> (ss_ :: ns, List.drop n ss))) ([], statements) items
+    |> Tuple.first
+    |> List.map (\ss ->
+      H.ul [ A.class "flex-1 mx-2 flex-col" ]
+        ( ss |> List.map (viewQSortItem selectMsg sortMsg selectedStatement)
+        )
+    )  
+
+viewQSortItem : (Statement -> msg) -> (Int -> msg) -> Maybe Statement -> (Int, Maybe Statement) -> Html msg
+viewQSortItem selectMsg sortMsg selectedStatement (n, s) =
+  case s of
+    Just ({ key } as statement) ->
+      H.li
+        [ A.class "w-full mb-2 h-10 hover:bg-blue-500 rounded flex content-center items-center align-center" 
+        , if selectedStatement == s then
+            A.class "bg-blue-300"
+          else
+            A.class "bg-gray-400"
+        , E.onClick (selectMsg statement) ]
+        [ H.div
+          [ A.class "font-bold p-2 mx-auto" ]
+          [ H.text <| "[" ++ key ++ "]" ]
+        ]
+
+    Nothing ->
+      H.li
+        [ A.class "w-full mb-2 h-10 bg-gray-400 hover:bg-gray-500 rounded flex content-center align-center" 
+        , E.onClick (sortMsg n)
+        ] []
+
+-- JSON  -----------------------------------------------------------------------
+encode : QSort -> Encode.Value
+encode qsort =
+  let
+    encodeStatement { title, key, description, image, rating } =
+      Encode.object
+        [ ("title", Encode.string title)
+        , ("key", Encode.string key)
+        , ("description", Encode.list Encode.string description)
+        , ("image", Maybe.withDefault Encode.null <| Maybe.map Encode.string image)
+        , ("rating", Encode.string <| ratingToString rating)
+        ]
+
+    nullable encoder a =
+      Maybe.map encoder a |> Maybe.withDefault Encode.null
+      
+  in
+  case qsort of
+    Basic { title, description, statements, unsorted } ->
+      Encode.object
+        [ ("type", Encode.string "Basic")
+        , ("title", Encode.string title)
+        , ("description", Encode.string description)
+        , ("statements", Encode.list encodeStatement statements)
+        , ("unsorted", Encode.list encodeStatement unsorted)
+        ]
+
+    Normal { title, description, statements, unsorted, length } ->
+      Encode.object
+        [ ("type", Encode.string "Normal")
+        , ("title", Encode.string title)
+        , ("description", Encode.string description)
+        , ("statements", Encode.list identity <| List.map (nullable encodeStatement) statements)
+        , ("unsorted", Encode.list encodeStatement unsorted)
+        , ("length", Encode.int length)
+        ]
+
+decoder : Decoder QSort
+decoder =
+  let
+    basicData title description statements unsorted =
+      { title = title
+      , description = description
+      , statements = statements
+      , unsorted = unsorted
+      , selected = Nothing
+      }
+
+    normalData title description statements unsorted length shape =
+      { title = title
+      , description = description
+      , statements = statements
+      , unsorted = unsorted
+      , selected = Nothing
+      , length = length
+      , shape = shape
+      }
+
+    statementDecoder =
+      Decode.map5 Statement
+        (Decode.field "title" Decode.string)
+        (Decode.field "key" Decode.string)
+        (Decode.field "description" <| Decode.list Decode.string)
+        (Decode.field "image" <| Decode.nullable Decode.string)
+        (Decode.field "rating" ratingDecoder)
+
+    ratingDecoder =
+      Decode.string |> Decode.andThen (\s ->
+        case s of
+          "Negative"  -> Decode.succeed Negative
+          "Neutral"   -> Decode.succeed Neutral
+          "Positive"  -> Decode.succeed Positive
+          _           -> Decode.fail s
+      )
+  in
+  Decode.field "type" Decode.string |> Decode.andThen (\t ->
+    case t of
+      "Basic" ->
+        Decode.map Basic <| Decode.map4 basicData
+          (Decode.field "title" Decode.string)
+          (Decode.field "description" Decode.string)
+          (Decode.field "statements" <| Decode.list statementDecoder)
+          (Decode.field "unsorted" <| Decode.list statementDecoder)
+
+      "Normal" ->
+        Decode.map Normal <| Decode.map6 normalData
+          (Decode.field "title" Decode.string)
+          (Decode.field "description" Decode.string)
+          (Decode.field "statements" <| Decode.list (Decode.nullable statementDecoder))
+          (Decode.field "unsorted" <| Decode.list statementDecoder)
+          (Decode.field "length" Decode.int)
+          (Decode.field "shape" <| Decode.list Decode.int)
+
+      _ ->
+        Decode.fail t
+  )

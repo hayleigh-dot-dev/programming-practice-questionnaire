@@ -1,0 +1,69 @@
+{ "type": "Basic"
+, "title": "Language Features"
+, "description": ""
+, "statements":
+  [
+  ]
+, "unsorted":
+  [ { "text": "The ability to restrict functions based on values"
+    , "key": "01"
+    , "description": ""
+    , "image": "images/dependent-types.png"
+    , "rating": "Neutral" }
+  , { "text": "Values with the same shape may be used interchangeably."
+    , "key": "02"
+    , "description": ""
+    , "image": "images/structural-types.png"
+    , "rating": "Neutral" }
+  , { "text": "Sum types can describe different variants of a single type."
+    , "key": "03"
+    , "description": ""
+    , "image": "images/sum-types.png"
+    , "rating": "Neutral" }
+  , { "text": "Union types that allow a value to be one of several distinct types."
+    , "key": "04"
+    , "description": ""
+    , "image": null
+    , "rating": "Neutral" }
+  , { "text": "A dynamic type system where types are checked at runtime."
+    , "key": "05"
+    , "description": ""
+    , "image": null
+    , "rating": "Neutral" }
+  , { "text": "A static type system that ensures type correctness at compile time."
+    , "key": "05"
+    , "description": ""
+    , "image": null
+    , "rating": "Neutral" }
+  , { "text": "The language has null or undefined values."
+    , "key": "06"
+    , "description": ""
+    , "image": null
+    , "rating": "Neutral" }
+  , { "text": "Errors are encoded at the type level."
+    , "key": "07"
+    , "description": ""
+    , "image": null
+    , "rating": "Neutral" }
+  , { "text": "The language has a small standard library of functions and utilities."
+    , "key": "08"
+    , "description": ""
+    , "image": null
+    , "rating": "Neutral" }
+  , { "text": "The language’s standard library can be “swapped out” for a different community maintained or custom one."
+    , "key": "09"
+    , "description": ""
+    , "image": null
+    , "rating": "Neutral" }
+  , { "text": "The language’s standard library covers many different areas such as UI, graphics,and more complex audio constructs."
+    , "key": "10"
+    , "description": ""
+    , "image": null
+    , "rating": "Neutral" }
+  , { "text": "Published packages must follow Semantic Versioning that ensures breakingchanges to an API are reflected by a major version bump."
+    , "key": "11"
+    , "description": ""
+    , "image": null
+    , "rating": "Neutral" }
+  ]
+}

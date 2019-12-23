@@ -1,157 +1,144 @@
-module Main exposing
-  ( ..
+port module Main exposing
+  ( main
   )
 
 -- Imports ---------------------------------------------------------------------
 import Browser
+import Data.Likert exposing (LikertScale)
+import Data.Tuple as Tuple exposing (Tuple)
+import Data.QSort exposing (QSort)
 import Dict exposing (Dict)
 import Html as H exposing (Html)
 import Html.Attributes as A
-import Html.Events as E
-import Set exposing (Set)
+import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
+import Set
+import Ui.Section
 
-import Data.Likert
-import Data.QSort
+-- Ports -----------------------------------------------------------------------
+port toLocalStorage : Encode.Value -> Cmd msg
 
 -- Main ------------------------------------------------------------------------
-main : Program Flags Model Msg
+main : Program Decode.Value (Result Decode.Error Model) Msg
 main =
   Browser.element
     { init = init
     , update = update
-    , view = view
-    , subscriptions = subscriptions
+    , view = Result.map view >> Result.withDefault viewError
+    , subscriptions = Result.map subscriptions >> Result.withDefault Sub.none
     }
 
 -- Model -----------------------------------------------------------------------
 type alias Flags =
-  ()
-
-type alias Model =
-  { questionnaire : Dict String Data.Likert.Scale
-  , qsort : Data.QSort.BasicSort
+  { likert : List LikertScale
+  , qsort : QSort
   }
 
-scaleOne : Data.Likert.Scale
-scaleOne =
-  let
-    title : String
-    title = "The extent to which the end-goal is defined."
+flagsDecoder : Decoder Flags
+flagsDecoder =
+  Decode.map2 Flags
+    (Decode.field "likert" <| Decode.list Data.Likert.decoder)
+    (Decode.field "qsort" Data.QSort.decoder)
 
-    description : String
-    description = "Some programmers have a very clear idea of what the finished "
-      ++ "piece of software should look like and what it should do. Others take a "
-      ++ "more exploratory approach. The following statements are about how clearly "
-      ++ "defined the end-goal of a project is before you start programming."
+type alias Model =
+  { likert : List LikertScale
+  , qsort : QSort
+  }
 
-    statements : Set String
-    statements =
-      Set.fromList
-        [ "Before starting to program I have a clear idea what the program will look like."
-        , "Before starting to program I have a clear idea how the program will work."
-        , "Before starting to program I have a clear idea how to organise my code."
-        , "Before starting to program I write down what I need to do."
-        , "Before starting to program I sketch or wireframe how the program will look."
-        ]
-  in
-  Data.Likert.fivePointScale title description statements
+encodeModel : Model -> Encode.Value
+encodeModel { likert, qsort } =
+  Encode.object
+    [ ("likert", Encode.list Data.Likert.encode likert)
+    , ("qsort", Data.QSort.encode qsort)
+    ]
 
-scaleTwo : Data.Likert.Scale
-scaleTwo =
-  let
-    title : String
-    title = "The extent of programming effort, over time, and in the size of the resulting codebase"
-
-    description : String
-    description = "Some programmers work on projects for many months or even years. "
-      ++ "Others prefer to work on a project for just a matter of days or hours. "
-      ++ "The following statements are about how long a typical project takes before "
-      ++ "you consider it complete, and how large the codebase is when it is finished."
-
-    statements : Set String
-    statements =
-      Set.fromList
-        [ "A typical project takes a significant amount of time to complete."
-        , "A finished project’s codebase tends to span multiple files with many lines of code."
-        , "I tend to considered a project finished after one programming session."
-        , "A finished project’s codebase tends to be made up of one or two files."
-        ]
-  in
-  Data.Likert.fivePointScale title description statements
-
-basicSort : Data.QSort.BasicSort
-basicSort =
-  Data.QSort.createBasicSort "Language features" ""
-    (Set.fromList
-      [ "this is a feature"
-      , "this is another feature"
-      , "and another one"
-      , "and so on"
-      , "and so on"
-      ])
-
-init : Flags -> ( Model, Cmd Msg )
+init : Decode.Value -> Tuple (Result Decode.Error Model) (Cmd Msg)
 init flags =
-  ( { questionnaire =
-        Dict.fromList
-          [ ( "The extent to which the end-goal is defined.", scaleOne )
-          , ( "The extent of programming effort, over time, and in the size of the resulting codebase", scaleTwo )
-          ]
-    , qsort = basicSort
-    }
-  , Cmd.none
-  )
+  Decode.decodeValue flagsDecoder flags
+    |> Tuple.pairWith Cmd.none    
 
 -- Update ----------------------------------------------------------------------
 type Msg
-  = CheckItem String String Int
-  | SelectBasicItem String
-  | SortBasicItem Data.QSort.BasicCategory
+  = Check Int String Data.Likert.Rating
+  | Select Data.QSort.Statement
+  | Rate Data.QSort.Rating
+  | Sort Int
+  | StepForward
+  | StepBackward
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Result Decode.Error Model -> Tuple (Result Decode.Error Model) (Cmd Msg)
 update msg model =
   case msg of
-    CheckItem key statement rating ->
-      ( { model 
-        | questionnaire = Dict.update key (Maybe.map (Data.Likert.rate statement rating)) model.questionnaire 
-        }
-      , Cmd.none
-      )
+    Check i statement rating ->
+      Result.map (updateLikert (Data.Likert.rate statement rating) i) model
+        |> Tuple.from
+        |> Tuple.mapSecond (Result.map (encodeModel >> toLocalStorage) >> Result.withDefault Cmd.none)
 
-    SelectBasicItem item ->
-      ( { model
-        | qsort = Data.QSort.selectBasicItem item model.qsort
-        }
-      , Cmd.none
-      )
+    Select item ->
+      Result.map (updateQSort (Data.QSort.select item)) model
+        |> Tuple.from
+        |> Tuple.mapSecond (Result.map (encodeModel >> toLocalStorage) >> Result.withDefault Cmd.none)
 
-    SortBasicItem category ->
-      ( { model
-        | qsort = Data.QSort.sortBasicItem category model.qsort
-        }
-      , Cmd.none
-      )
+
+    Rate rating ->
+      Result.map (updateQSort (Data.QSort.rate rating)) model
+        |> Tuple.from
+        |> Tuple.mapSecond (Result.map (encodeModel >> toLocalStorage) >> Result.withDefault Cmd.none)
+
+
+    Sort position ->
+      Result.map (updateQSort (Data.QSort.sort position)) model
+        |> Tuple.from
+        |> Tuple.mapSecond (Result.map (encodeModel >> toLocalStorage) >> Result.withDefault Cmd.none)
+
+
+    StepForward ->
+      Result.map (updateQSort Data.QSort.stepForward) model
+        |> Tuple.from
+        |> Tuple.mapSecond (Result.map (encodeModel >> toLocalStorage) >> Result.withDefault Cmd.none)
+
+
+    StepBackward ->
+      Result.map (updateQSort Data.QSort.stepBackward) model
+        |> Tuple.from
+        |> Tuple.mapSecond (Result.map (encodeModel >> toLocalStorage) >> Result.withDefault Cmd.none)
+
+updateLikert : (LikertScale -> LikertScale) -> Int -> Model -> Model
+updateLikert updateF pos model =
+  model.likert 
+    |> List.indexedMap (\i scale -> if i == pos then updateF scale else scale)
+    |> (\likert -> { model | likert = likert })
+
+updateQSort : (QSort -> QSort) -> Model -> Model
+updateQSort updateF model =
+  updateF model.qsort
+    |> (\qsort -> { model | qsort = qsort })
 
 -- View ------------------------------------------------------------------------
 view : Model -> Html Msg
 view model =
-  let
-    likert : List (Html Msg)
-    likert =
-      Dict.toList model.questionnaire
-        |> List.map (\( k, scale ) -> Data.Likert.toHtml (CheckItem k) scale )
-
-    qsort : List (Html Msg)
-    qsort =
-      Data.QSort.viewBasicSort SelectBasicItem SortBasicItem model.qsort
-        |> List.singleton
-
-  in
-  H.main_ [ A.class "container mx-auto" ] (List.concat
-    [ likert
-    , qsort
+  H.main_ [ A.class "" ] (List.concat
+    [ model.likert
+        |> List.indexedMap (\i scale -> Data.Likert.toHtml (Check i) scale)
+    , List.singleton model.qsort
+        |> List.map (Data.QSort.toHtml
+            { selectMsg = Select
+            , rateMsg = Rate
+            , sortMsg = Sort
+            , stepForward = StepForward
+            , stepBackward = StepBackward
+            }
+        )
     ]
   )
+
+viewError : Html Msg
+viewError =
+  H.main_ [ A.class "" ]
+    [ Ui.Section.standard "Oops, something went wrong!" ""
+      []
+      []
+    ]
 
 -- Subscriptions ---------------------------------------------------------------
 subscriptions : Model -> Sub Msg
