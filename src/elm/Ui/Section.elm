@@ -1,31 +1,93 @@
 module Ui.Section exposing
-  ( standard
-  , full
+  ( Builder, empty
+  , withTitle, withDescription, addClass, addAttr, addChild, addChildren
+  , toHtml
   )
 
 -- Imports ---------------------------------------------------------------------
 import Html as H exposing (Html, Attribute)
 import Html.Attributes as A
 
--- Section ---------------------------------------------------------------------
-standard : String -> String -> List (Attribute msg) -> List (Html msg) -> Html msg
-standard title description attrs children =
-  H.section (A.class "container mx-auto bg-gray-200 my-4 px-10 py-4 rounded-lg" :: attrs)
+-- Types -----------------------------------------------------------------------
+type alias Builder msg =
+  { title : String
+  , description : String
+  , classes : List String
+  , attrs : List (Attribute msg)
+  , children : List (Html msg)
+  }
+
+empty : Builder msg
+empty =
+  { title = ""
+  , description = ""
+  , classes = []
+  , attrs = []
+  , children = []
+  }
+
+-- Functions -------------------------------------------------------------------
+withTitle : String -> Builder msg -> Builder msg
+withTitle title builder =
+  { builder | title = title }
+
+withDescription : String -> Builder msg -> Builder msg
+withDescription description builder =
+  { builder | description = description }
+
+addClass : String -> Builder msg -> Builder msg
+addClass class ({ classes } as builder) =
+  { builder | classes = classes ++ [class] }
+
+addAttr : Attribute msg -> Builder msg -> Builder msg
+addAttr attr ({ attrs } as builder) =
+  { builder | attrs = attrs ++ [attr] }
+
+addChild : Html msg -> Builder msg -> Builder msg
+addChild child ({ children } as builder) =
+  { builder | children = children ++ [child] }
+
+addChildren : List (Html msg) -> Builder msg -> Builder msg
+addChildren children builder =
+  { builder | children = builder.children ++ children }
+
+-- Builders --------------------------------------------------------------------
+-- standard : Builder msg
+-- standard =
+--   empty
+--     |> withClass "container"
+--     |> withClass "mx-auto"
+
+-- standard : String -> String -> List (Attribute msg) -> List (Html msg) -> Html msg
+-- standard title description attrs children =
+--   H.section (A.class "container mx-auto bg-gray-200 my-4 px-10 py-4 rounded-lg" :: attrs)
+--     [ H.h2 [ A.class "border-b-2 border-black mb-2 text-2xl text-bold" ]
+--       [ H.text title ]
+--     , H.p [ A.class "mb-4 text-justify" ]
+--       [ H.text description ]
+--     , H.div [ A.class "container" ] children
+--     ]
+
+-- full : String -> String -> List (Attribute msg) -> List (Html msg) -> Html msg
+-- full title description attrs children =
+--   H.section (A.class "w-screen bg-gray-200 my-4 px-10 py-4 rounded-lg" :: attrs)
+--     [ H.h2 [ A.class "border-b-2 border-black mb-2 text-2xl text-bold" ]
+--       [ H.text title ]
+--     , H.p [ A.class "mb-4 text-justify" ]
+--       [ H.text description ]
+--     , H.div [ A.class "container" ] children
+--     ]
+  
+-- View ------------------------------------------------------------------------
+toHtml : Builder msg -> Html msg
+toHtml { title, description, classes, attrs, children } =
+  H.section 
+    ( A.class "bg-gray-200 my-4 px-10 py-4 rounded-lg"
+      :: (String.join " " classes |> A.class)
+      :: attrs )
     [ H.h2 [ A.class "border-b-2 border-black mb-2 text-2xl text-bold" ]
       [ H.text title ]
     , H.p [ A.class "mb-4 text-justify" ]
       [ H.text description ]
     , H.div [ A.class "container" ] children
     ]
-
-full : String -> String -> List (Attribute msg) -> List (Html msg) -> Html msg
-full title description attrs children =
-  H.section (A.class "w-screen bg-gray-200 my-4 px-10 py-4 rounded-lg" :: attrs)
-    [ H.h2 [ A.class "border-b-2 border-black mb-2 text-2xl text-bold" ]
-      [ H.text title ]
-    , H.p [ A.class "mb-4 text-justify" ]
-      [ H.text description ]
-    , H.div [ A.class "" ] children
-    ]
-  
-

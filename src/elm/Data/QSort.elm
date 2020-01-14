@@ -225,51 +225,57 @@ toHtml events qsort =
 --
 viewBasicSort : Events msg -> BasicData -> Html msg
 viewBasicSort events { title, description, statements, unsorted, selected } =
-  Ui.Section.standard title description
-    [ A.attribute "data-q-sort" "basic" ]
-    [ H.div [ A.class "flex my-2 h-96" ]
-      [ H.div [ A.class "flex-1 mr-4" ]
-        [ viewStatementList selected events.selectMsg unsorted ]
-      , H.div [ A.class "flex-1 overflow-y-scroll overflow-x-hidden" ]
-        [ selected |> Maybe.map viewStatementInfo
-            |> Maybe.withDefault (H.text "")
+  let
+    unsortedList =
+      H.div [ A.class "flex my-2 h-96" ]
+        [ H.div [ A.class "flex-1 mr-4" ]
+          [ viewStatementList selected events.selectMsg unsorted ]
+        , H.div [ A.class "flex-1 overflow-y-scroll overflow-x-hidden" ]
+          [ selected |> Maybe.map viewStatementInfo
+              |> Maybe.withDefault (H.text "")
+          ]
         ]
-      ]
-    , H.div [ A.class "flex my-2" ]
-      [ Ui.Button.builder
-          |> Ui.Button.withText "Negative"
-          |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.red)
-          |> Ui.Button.withHandler (events.rateMsg Negative)
-          |> Ui.Button.withClass "flex-1 p-2 mr-4" 
-          |> Ui.Button.toHtml
-      , Ui.Button.builder
-          |> Ui.Button.withText "Neutral"
-          |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.grey)
-          |> Ui.Button.withHandler (events.rateMsg Neutral)
-          |> Ui.Button.withClass "flex-1 p-2 mx-2" 
-          |> Ui.Button.toHtml
-      , Ui.Button.builder
-          |> Ui.Button.withText "Positive"
-          |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.green)
-          |> Ui.Button.withHandler (events.rateMsg Positive)
-          |> Ui.Button.withClass "flex-1 p-2 ml-4" 
-          |> Ui.Button.toHtml
-      ]
-    , H.div [ A.class "flex mt-4 h-64" ]
-      [ H.div [ A.class "flex-1 mr-4" ]
-        [ List.filter (.rating >> (==) Negative) statements
-            |> viewStatementList selected events.selectMsg
+
+    controls =
+      H.div [ A.class "flex my-2" ]
+        [ Ui.Button.builder
+            |> Ui.Button.withText "Negative"
+            |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.red)
+            |> Ui.Button.withHandler (events.rateMsg Negative)
+            |> Ui.Button.withClass "flex-1 p-2 mr-4" 
+            |> Ui.Button.toHtml
+        , Ui.Button.builder
+            |> Ui.Button.withText "Neutral"
+            |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.grey)
+            |> Ui.Button.withHandler (events.rateMsg Neutral)
+            |> Ui.Button.withClass "flex-1 p-2 mx-2" 
+            |> Ui.Button.toHtml
+        , Ui.Button.builder
+            |> Ui.Button.withText "Positive"
+            |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.green)
+            |> Ui.Button.withHandler (events.rateMsg Positive)
+            |> Ui.Button.withClass "flex-1 p-2 ml-4" 
+            |> Ui.Button.toHtml
         ]
-      , H.div [ A.class "flex-1 mx-2" ]
-        [ List.filter (.rating >> (==) Neutral) statements
-            |> viewStatementList selected events.selectMsg
+
+    sortedList =
+      H.div [ A.class "flex mt-4 h-64" ]
+        [ H.div [ A.class "flex-1 mr-4" ]
+          [ List.filter (.rating >> (==) Negative) statements
+              |> viewStatementList selected events.selectMsg
+          ]
+        , H.div [ A.class "flex-1 mx-2" ]
+          [ List.filter (.rating >> (==) Neutral) statements
+              |> viewStatementList selected events.selectMsg
+          ]
+        , H.div [ A.class "flex-1 ml-4" ]
+          [ List.filter (.rating >> (==) Positive) statements
+              |> viewStatementList selected events.selectMsg
+          ]
         ]
-      , H.div [ A.class "flex-1 ml-4" ]
-        [ List.filter (.rating >> (==) Positive) statements
-            |> viewStatementList selected events.selectMsg
-        ]
-      ]
-      , H.div [ A.class "flex mb-4" ]
+
+    nextButton =
+      H.div [ A.class "flex mb-4" ]
         [ Ui.Button.builder
           |> Ui.Button.withText "Next Step"
           |> Ui.Button.withColour (
@@ -289,66 +295,142 @@ viewBasicSort events { title, description, statements, unsorted, selected } =
           |> Ui.Button.withAttr (A.disabled (not <| List.isEmpty unsorted))
           |> Ui.Button.toHtml
         ]
-    ]
+  in
+  Ui.Section.empty
+    |> Ui.Section.withTitle title
+    |> Ui.Section.withDescription description
+    |> Ui.Section.addClass "container mx-auto"
+    |> Ui.Section.addAttr (A.attribute "data-q-sort" "basic")
+    |> Ui.Section.addChild unsortedList
+    |> Ui.Section.addChild controls
+    |> Ui.Section.addChild sortedList
+    |> Ui.Section.addChild nextButton
+    |> Ui.Section.toHtml
 
 --
 viewNormalSort : Events msg -> NormalData -> Html msg
 viewNormalSort events { title, description, statements, unsorted, selected, shape } =
-  Ui.Section.standard title description
-    [ A.attribute "data-q-sort" "normal" ]
-    [ H.div [ A.class "flex h-96" ]
-      ( selected |> Maybe.map viewSplitStatementInfo
-          |> Maybe.withDefault [ H.text "" ]
-      )
-    , H.hr [ A.class "border border-black mb-4" ] []
-    , H.div [ A.class "flex justify-between my-2" ]
+  let
+    statementInfo =
+      H.div [ A.class "flex h-96" ]
+        ( selected |> Maybe.map viewSplitStatementInfo
+            |> Maybe.withDefault [ H.text "" ]
+        )
+
+    normalDistribution =
+      H.div [ A.class "flex justify-between my-2" ]
         ( List.indexedMap Tuple.pair statements
             |> viewNormalDistribution events.selectMsg events.sortMsg selected shape
         )
-    , H.hr [ A.class "border border-black mb-4" ] []
-    , H.div [ A.class "flex my-2" ]
-      [ Ui.Button.builder
-          |> Ui.Button.withText "Negative"
-          |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.red)
-          |> Ui.Button.withHandler (events.rateMsg Negative)
-          |> Ui.Button.withClass "flex-1 p-2 mr-4" 
-          |> Ui.Button.toHtml
-      , Ui.Button.builder
-          |> Ui.Button.withText "Neutral"
-          |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.grey)
-          |> Ui.Button.withHandler (events.rateMsg Neutral)
-          |> Ui.Button.withClass "flex-1 p-2 mx-2" 
-          |> Ui.Button.toHtml
-      , Ui.Button.builder
-          |> Ui.Button.withText "Positive"
-          |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.green)
-          |> Ui.Button.withHandler (events.rateMsg Positive)
-          |> Ui.Button.withClass "flex-1 p-2 ml-4" 
-          |> Ui.Button.toHtml
-      ]
-    , H.div [ A.class "flex my-2 h-64" ]
-      [ H.div [ A.class "flex-1 mr-4" ]
-        [ List.filter (.rating >> (==) Negative) unsorted
-            |> viewStatementList selected events.selectMsg
+
+    sortButtons =
+      H.div [ A.class "flex my-2" ]
+        [ Ui.Button.builder
+            |> Ui.Button.withText "Negative"
+            |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.red)
+            |> Ui.Button.withHandler (events.rateMsg Negative)
+            |> Ui.Button.withClass "flex-1 p-2 mr-4" 
+            |> Ui.Button.toHtml
+        , Ui.Button.builder
+            |> Ui.Button.withText "Neutral"
+            |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.grey)
+            |> Ui.Button.withHandler (events.rateMsg Neutral)
+            |> Ui.Button.withClass "flex-1 p-2 mx-2" 
+            |> Ui.Button.toHtml
+        , Ui.Button.builder
+            |> Ui.Button.withText "Positive"
+            |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.green)
+            |> Ui.Button.withHandler (events.rateMsg Positive)
+            |> Ui.Button.withClass "flex-1 p-2 ml-4" 
+            |> Ui.Button.toHtml
         ]
-      , H.div [ A.class "flex-1 mx-2" ]
-        [ List.filter (.rating >> (==) Neutral) unsorted
-            |> viewStatementList selected events.selectMsg
+
+    unsortedList =
+      H.div [ A.class "flex my-2 h-64" ]
+        [ H.div [ A.class "flex-1 mr-4" ]
+          [ List.filter (.rating >> (==) Negative) unsorted
+              |> viewStatementList selected events.selectMsg
+          ]
+        , H.div [ A.class "flex-1 mx-2" ]
+          [ List.filter (.rating >> (==) Neutral) unsorted
+              |> viewStatementList selected events.selectMsg
+          ]
+        , H.div [ A.class "flex-1 ml-4" ]
+          [ List.filter (.rating >> (==) Positive) unsorted
+              |> viewStatementList selected events.selectMsg
+          ]
         ]
-      , H.div [ A.class "flex-1 ml-4" ]
-        [ List.filter (.rating >> (==) Positive) unsorted
-            |> viewStatementList selected events.selectMsg
-        ]
+  in
+  Ui.Section.empty
+    |> Ui.Section.withTitle title
+    |> Ui.Section.withDescription description
+    |> Ui.Section.addClass "container mx-auto"
+    |> Ui.Section.addAttr (A.attribute "data-q-sort" "normal")
+    |> Ui.Section.addChildren
+      [ statementInfo
+      , H.hr [ A.class "border border-black mb-4" ] []
+      , normalDistribution
+      , H.hr [ A.class "border border-black mb-4" ] []
+      , sortButtons
+      , unsortedList
       ]
-    , H.div [ A.class "flex mb-4" ]
-      [ Ui.Button.builder
-          |> Ui.Button.withText "Prev Step"
-          |> Ui.Button.withColour Ui.Colour.blue
-          |> Ui.Button.withHandler events.stepBackward
-          |> Ui.Button.withClass "flex-1 p-2"
-          |> Ui.Button.toHtml
-      ]
-    ]
+    |> Ui.Section.toHtml
+    
+  -- Ui.Section.standard title description
+  --   [ A.attribute "data-q-sort" "normal" ]
+  --   [ H.div [ A.class "flex h-96" ]
+  --     ( selected |> Maybe.map viewSplitStatementInfo
+  --         |> Maybe.withDefault [ H.text "" ]
+  --     )
+  --   , H.hr [ A.class "border border-black mb-4" ] []
+  --   , H.div [ A.class "flex justify-between my-2" ]
+  --       ( List.indexedMap Tuple.pair statements
+  --           |> viewNormalDistribution events.selectMsg events.sortMsg selected shape
+  --       )
+  --   , H.hr [ A.class "border border-black mb-4" ] []
+  --   , H.div [ A.class "flex my-2" ]
+  --     [ Ui.Button.builder
+  --         |> Ui.Button.withText "Negative"
+  --         |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.red)
+  --         |> Ui.Button.withHandler (events.rateMsg Negative)
+  --         |> Ui.Button.withClass "flex-1 p-2 mr-4" 
+  --         |> Ui.Button.toHtml
+  --     , Ui.Button.builder
+  --         |> Ui.Button.withText "Neutral"
+  --         |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.grey)
+  --         |> Ui.Button.withHandler (events.rateMsg Neutral)
+  --         |> Ui.Button.withClass "flex-1 p-2 mx-2" 
+  --         |> Ui.Button.toHtml
+  --     , Ui.Button.builder
+  --         |> Ui.Button.withText "Positive"
+  --         |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.green)
+  --         |> Ui.Button.withHandler (events.rateMsg Positive)
+  --         |> Ui.Button.withClass "flex-1 p-2 ml-4" 
+  --         |> Ui.Button.toHtml
+  --     ]
+  --   , H.div [ A.class "flex my-2 h-64" ]
+  --     [ H.div [ A.class "flex-1 mr-4" ]
+  --       [ List.filter (.rating >> (==) Negative) unsorted
+  --           |> viewStatementList selected events.selectMsg
+  --       ]
+  --     , H.div [ A.class "flex-1 mx-2" ]
+  --       [ List.filter (.rating >> (==) Neutral) unsorted
+  --           |> viewStatementList selected events.selectMsg
+  --       ]
+  --     , H.div [ A.class "flex-1 ml-4" ]
+  --       [ List.filter (.rating >> (==) Positive) unsorted
+  --           |> viewStatementList selected events.selectMsg
+  --       ]
+  --     ]
+  --   , H.div [ A.class "flex mb-4" ]
+  --     [ Ui.Button.builder
+  --         |> Ui.Button.withText "Prev Step"
+  --         |> Ui.Button.withColour Ui.Colour.blue
+  --         |> Ui.Button.withHandler events.stepBackward
+  --         |> Ui.Button.withClass "flex-1 p-2"
+  --         |> Ui.Button.toHtml
+  --     ]
+  --   ]
 
 --
 ratingToString : Rating -> String
@@ -380,7 +462,7 @@ viewStatementItem active handler { title, key } =
     ] 
     [ H.span [ A.class "font-bold pr-2" ] [ H.text <| "[" ++ key ++ "]" ]
     , H.span [ A.class "text-justify" ] [ H.text title ]
-     ]
+    ]
 
 viewStatementInfo : Statement -> Html msg
 viewStatementInfo { title, description, image } =

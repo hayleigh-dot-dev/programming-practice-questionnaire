@@ -1,146 +1,383 @@
-port module Main exposing
+module Main exposing
   ( main
   )
 
--- Imports ---------------------------------------------------------------------
+{- Imports ------------------------------------------------------------------ -}
 import Browser
+import Browser.Navigation
+import Json.Decode
+import Set
+import Tuple.Extra
+import Url exposing (Url)
+
+import Data.UserConsent exposing (UserConsent)
 import Data.Likert exposing (LikertScale)
-import Tuple.Extra as Tuple exposing (Tuple)
+import Data.MultipleChoice exposing (MultipleChoice)
 import Data.QSort exposing (QSort)
-import Html as H exposing (Html)
-import Html.Attributes as A
-import Json.Decode as Decode exposing (Decoder)
-import Json.Encode as Encode
-import Ui.Section
 
--- Ports -----------------------------------------------------------------------
-port toLocalStorage : Encode.Value -> Cmd msg
+import Pages.Info
+import Pages.Consent
+import Pages.Demographics
+import Pages.Likert
+import Pages.QSort
 
--- Main ------------------------------------------------------------------------
-main : Program Decode.Value (Result Decode.Error Model) Msg
+{- Main --------------------------------------------------------------------- -}
+main : Program Json.Decode.Value App Msg
 main =
-  Browser.element
+  Browser.application
     { init = init
+    , view = view
     , update = update
-    , view = Result.map view >> Result.withDefault viewError
-    , subscriptions = Result.map subscriptions >> Result.withDefault Sub.none
+    , subscriptions = subscriptions
+    , onUrlChange = onUrlChange
+    , onUrlRequest = onUrlRequest
     }
 
--- Model -----------------------------------------------------------------------
+onUrlChange : Url -> Msg
+onUrlChange url =
+  UrlChanged url
+
+onUrlRequest : Browser.UrlRequest -> Msg
+onUrlRequest urlRequest =
+  case urlRequest of
+    Browser.Internal url ->
+      InternalUrlRequested url
+
+    Browser.External url ->
+      ExternalUrlRequested url
+
+{- Model -------------------------------------------------------------------- -}
+type alias App =
+  (Page, Browser.Navigation.Key, Model)
+
+type alias Model =
+  { userConsent : UserConsent
+  , userName : String
+  , userDate : String
+  , multipleChoiceQuestions : List MultipleChoice
+  , likertScales : List LikertScale
+  , qsort : QSort
+  }
+
+type Page
+  = Info
+  | Consent
+  | Demographics
+  | Likert
+  | QSort
+  | Submission
+  | Error
+
 type alias Flags =
   { likert : List LikertScale
   , qsort : QSort
   }
 
-flagsDecoder : Decoder Flags
+flagsDecoder : Json.Decode.Decoder Flags
 flagsDecoder =
-  Decode.map2 Flags
-    (Decode.field "likert" <| Decode.list Data.Likert.decoder)
-    (Decode.field "qsort" Data.QSort.decoder)
+  Json.Decode.map2 Flags
+    (Json.Decode.field "likert" (Json.Decode.list Data.Likert.decoder))
+    (Json.Decode.field "qsort" Data.QSort.decoder)
 
-type alias Model =
-  { likert : List LikertScale
-  , qsort : QSort
-  }
+init : Json.Decode.Value -> Url -> Browser.Navigation.Key -> (App, Cmd Msg)
+init flags url key =
+  case Json.Decode.decodeValue flagsDecoder flags of
+    Ok { likert, qsort } ->
+      Tuple.Extra.pairWith Cmd.none <|
+        ( updatePage url
+        , key
+        , { userConsent = Data.UserConsent.init
+          , userName = ""
+          , userDate = ""
+          , multipleChoiceQuestions =
+            [ Data.MultipleChoice.initSingleResponse
+                "How old are you?"
+                [ "Under 18"
+                , "18-24 years old"
+                , "25-34 years old"
+                , "35-44 years old"
+                , "45-54 years old"
+                , "Over 55"
+                ]
+            , Data.MultipleChoice.initSingleResponseWithOther
+                "What is your highest level of education achieved?"
+                [ "Less than A-levels (UK) or a high school diploma (US)"
+                , "A-levels (UK), high school diploma (US), or equivalent"
+                , "Bachelor's Degree"
+                , "Master's Degree"
+                , "Doctorate"
+                ]
+            , Data.MultipleChoice.initSingleResponseWithOther
+                "What was your primary field of study?" []
+            , Data.MultipleChoice.initSingleResponse
+                "How long have you been programming?"
+                [ "Less than 1 year"
+                , "1-2 years"
+                , "3-5 years"
+                , "6-10 years"
+                , "Over 10 years"
+                ]
+            , Data.MultipleChoice.initSingleResponse
+                "How long have you been programming interactive audio applications?"
+                [ "Less than 1 year"
+                , "1-2 years"
+                , "3-5 years"
+                , "6-10 years"
+                , "Over 10 years"
+                ]
+            , Data.MultipleChoice.initMultipleResponseWithOther
+                "Which of the following languages or frameworks have you used for creating interactive audio applications?"
+                [ "Csound"
+                , "FAUST"
+                , "JavaScript"
+                , "Max/MSP"
+                , "Processing"
+                , "Pure Data"
+                , "Reaktor"
+                , "SuperCollider"
+                ]
+            , Data.MultipleChoice.initSingleResponseWithOther
+                "Which of the following languages or frameworks are you most comfortable creating interactive audio applications with?"
+                [ "Csound"
+                , "FAUST"
+                , "JavaScript"
+                , "Max/MSP"
+                , "Processing"
+                , "Pure Data"
+                , "Reaktor"
+                , "SuperCollider"
+                ]
+            ]
+          , likertScales = likert
+          , qsort = qsort
+          }
+        )
 
-encodeModel : Model -> Encode.Value
-encodeModel { likert, qsort } =
-  Encode.object
-    [ ("likert", Encode.list Data.Likert.encode likert)
-    , ("qsort", Data.QSort.encode qsort)
-    ]
+    Err _ ->
+      Tuple.Extra.pairWith Cmd.none <|
+        ( updatePage url
+        , key
+        , { userConsent = Data.UserConsent.init
+          , userName = ""
+          , userDate = ""
+          , multipleChoiceQuestions = []
+          , likertScales = []
+          , qsort = Data.QSort.init "" "" Set.empty
+          }
+        )
 
-init : Decode.Value -> Tuple (Result Decode.Error Model) (Cmd Msg)
-init flags =
-  Decode.decodeValue flagsDecoder flags
-    |> Tuple.pairWith Cmd.none    
-
--- Update ----------------------------------------------------------------------
+{- Update ------------------------------------------------------------------- -}
 type Msg
-  = Check Int String Data.Likert.Rating
-  | Select Data.QSort.Statement
-  | Rate Data.QSort.Rating
-  | Sort Int
+  = UrlChanged Url
+  | InternalUrlRequested Url
+  | ExternalUrlRequested String
+  -- Consent Form
+  | UserConsentChanged Data.UserConsent.Field
+  | UserNameChanged String
+  | UserDateChanged String
+  -- Demographic Info
+  | OptionSelected Int Data.MultipleChoice.Option
+  | OptionAdded Int String
+  -- Likert Scales
+  | ItemChecked Int String Data.Likert.Rating
+  -- QSort Exercise
+  | ItemSelected Data.QSort.Statement
+  | ItemRated Data.QSort.Rating
+  | ItemSorted Int
   | StepForward
   | StepBackward
+  -- Submission
 
-update : Msg -> Result Decode.Error Model -> Tuple (Result Decode.Error Model) (Cmd Msg)
-update msg model =
+update : Msg -> App -> (App, Cmd Msg)
+update msg (page, key, model) =
   case msg of
-    Check i statement rating ->
-      Result.map (updateLikert (Data.Likert.rate statement rating) i) model
-        |> Tuple.from
-        |> Tuple.mapSecond (Result.map (encodeModel >> toLocalStorage) >> Result.withDefault Cmd.none)
+    UrlChanged url ->
+      Tuple.Extra.pairWith Cmd.none <|
+        ( updatePage url
+        , key
+        , model
+        )
 
-    Select item ->
-      Result.map (updateQSort (Data.QSort.select item)) model
-        |> Tuple.from
-        |> Tuple.mapSecond (Result.map (encodeModel >> toLocalStorage) >> Result.withDefault Cmd.none)
+    InternalUrlRequested url ->
+      Tuple.Extra.pairWith (Browser.Navigation.pushUrl key (Url.toString url)) <|
+        ( page
+        , key
+        , model
+        )
 
+    ExternalUrlRequested url ->
+      Tuple.Extra.pairWith (Browser.Navigation.load url) <|
+        ( page
+        , key
+        , model
+        )
 
-    Rate rating ->
-      Result.map (updateQSort (Data.QSort.rate rating)) model
-        |> Tuple.from
-        |> Tuple.mapSecond (Result.map (encodeModel >> toLocalStorage) >> Result.withDefault Cmd.none)
+    UserConsentChanged field ->
+      Tuple.Extra.pairWith Cmd.none <|
+        ( page
+        , key
+        , { model | userConsent = Data.UserConsent.update field model.userConsent }
+        )
 
+    UserNameChanged name ->
+      Tuple.Extra.pairWith Cmd.none <|
+        ( page
+        , key
+        , { model | userName = name }
+        )
 
-    Sort position ->
-      Result.map (updateQSort (Data.QSort.sort position)) model
-        |> Tuple.from
-        |> Tuple.mapSecond (Result.map (encodeModel >> toLocalStorage) >> Result.withDefault Cmd.none)
+    UserDateChanged date ->
+      Tuple.Extra.pairWith Cmd.none <|
+        ( page
+        , key
+        , { model | userDate = date }
+        )
 
+    OptionSelected i option ->
+      Tuple.Extra.pairWith Cmd.none <|
+        ( page
+        , key
+        , model |> updateMultipleChoice (Data.MultipleChoice.select option) i
+        )
+
+    OptionAdded i option ->
+      Tuple.Extra.pairWith Cmd.none <|
+        ( page
+        , key
+        , model |> updateMultipleChoice (Data.MultipleChoice.add option) i
+        )
+
+    ItemChecked i statement rating ->
+      Tuple.Extra.pairWith Cmd.none <|
+        ( page
+        , key
+        , model |> updateLikertScale (Data.Likert.rate statement rating) i 
+        )
+
+    ItemSelected statement ->
+      Tuple.Extra.pairWith Cmd.none <|
+        ( page
+        , key
+        , { model | qsort = Data.QSort.select statement model.qsort }
+        )
+  
+    ItemRated rating ->
+      Tuple.Extra.pairWith Cmd.none <|
+        ( page
+        , key
+        , { model | qsort = Data.QSort.rate rating model.qsort }
+        )
+  
+    ItemSorted position ->
+      Tuple.Extra.pairWith Cmd.none <|
+        ( page
+        , key
+        , { model | qsort = Data.QSort.sort position model.qsort }
+        )
 
     StepForward ->
-      Result.map (updateQSort Data.QSort.stepForward) model
-        |> Tuple.from
-        |> Tuple.mapSecond (Result.map (encodeModel >> toLocalStorage) >> Result.withDefault Cmd.none)
-
+      Tuple.Extra.pairWith Cmd.none <|
+        ( page
+        , key
+        , { model | qsort = Data.QSort.stepForward model.qsort }
+        )
 
     StepBackward ->
-      Result.map (updateQSort Data.QSort.stepBackward) model
-        |> Tuple.from
-        |> Tuple.mapSecond (Result.map (encodeModel >> toLocalStorage) >> Result.withDefault Cmd.none)
+      Tuple.Extra.pairWith Cmd.none <|
+        ( page
+        , key
+        , { model | qsort = Data.QSort.stepBackward model.qsort }
+        )
 
-updateLikert : (LikertScale -> LikertScale) -> Int -> Model -> Model
-updateLikert updateF pos model =
-  model.likert 
-    |> List.indexedMap (\i scale -> if i == pos then updateF scale else scale)
-    |> (\likert -> { model | likert = likert })
 
-updateQSort : (QSort -> QSort) -> Model -> Model
-updateQSort updateF model =
-  updateF model.qsort
-    |> (\qsort -> { model | qsort = qsort })
+updatePage : Url -> Page
+updatePage { path } =
+  case path of
+    "/"         -> Info
+    "/info"     -> Info
+    "/consent"  -> Consent
+    "/1"        -> Demographics
+    "/2"        -> Likert
+    "/3"        -> QSort
+    "/4"        -> Submission
+    _           -> Error
 
--- View ------------------------------------------------------------------------
-view : Model -> Html Msg
-view model =
-  H.main_ [ A.class "" ] (List.concat
-    [ model.likert
-        |> List.indexedMap (\i scale -> Data.Likert.toHtml (Check i) scale)
-    , List.singleton model.qsort
-        |> List.map (Data.QSort.toHtml
-            { selectMsg = Select
-            , rateMsg = Rate
-            , sortMsg = Sort
+updateMultipleChoice : (MultipleChoice -> MultipleChoice) -> Int -> Model -> Model
+updateMultipleChoice updateF j model =
+  model.multipleChoiceQuestions 
+    |> List.indexedMap (\i mc -> if i == j then updateF mc else mc)
+    |> (\multipleChoiceQuestions -> { model | multipleChoiceQuestions = multipleChoiceQuestions })
+
+updateLikertScale : (LikertScale -> LikertScale) -> Int -> Model -> Model
+updateLikertScale updateF j model =
+  model.likertScales 
+    |> List.indexedMap (\i scale -> if i == j then updateF scale else scale)
+    |> (\likertScales -> { model | likertScales = likertScales })
+
+{- View --------------------------------------------------------------------- -}
+title : String -> String
+title suffix =
+  "Understanding Programming Practice in Audio Software Programming – " ++ suffix
+
+view : App -> Browser.Document Msg
+view (page, _, model) =
+  case page of
+    Info ->
+      { title = title "Info"
+      , body = 
+          Pages.Info.view
+      }
+
+    Consent ->
+      { title = title "Consent"
+      , body = 
+          Pages.Consent.view model
+            { userConsentChanged = UserConsentChanged
+            , userNameChanged = UserNameChanged
+            , userDateChanged = UserDateChanged
+            }
+      }
+
+    Demographics ->
+      { title = title "Demographics"
+      , body = 
+          Pages.Demographics.view model
+            { optionSelected = OptionSelected
+            , optionAdded = OptionAdded
+            }
+      }
+
+    Likert ->
+      { title = title "Likert Scales"
+      , body = 
+          Pages.Likert.view model
+            { itemChecked = ItemChecked
+            }
+      }
+
+    QSort ->
+      { title = title "QSort Exercise"
+      , body = 
+          Pages.QSort.view model
+            { itemSelected = ItemSelected
+            , itemRated = ItemRated
+            , itemSorted = ItemSorted
             , stepForward = StepForward
             , stepBackward = StepBackward
             }
-        )
-    ]
-  )
+      }
 
-viewError : Html Msg
-viewError =
-  H.main_ [ A.class "" ]
-    [ Ui.Section.standard "Oops, something went wrong!" ""
-      []
-      []
-    ]
+    Submission ->
+      { title = title "Submission"
+      , body = []
+      }
 
--- Subscriptions ---------------------------------------------------------------
-subscriptions : Model -> Sub Msg
-subscriptions _ =
-  Sub.batch
-    [
-    ]
+    Error ->
+      { title = title "Error"
+      , body = []
+      }
+
+{- Subscriptions ------------------------------------------------------------ -}
+subscriptions : App -> Sub Msg
+subscriptions app =
+  Sub.none

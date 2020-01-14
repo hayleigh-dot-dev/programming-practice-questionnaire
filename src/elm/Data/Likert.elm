@@ -123,11 +123,13 @@ toHtml handler scale =
     statements =  
       scale.statements |> List.map (viewStatement handler scale.ratings)
   in
-  Ui.Section.standard scale.title scale.description
-    [ A.attribute "data-likert" <| (String.fromInt << List.length) scale.ratings ]
-    [ H.ul []
-      ( labels :: statements )
-    ]
+  Ui.Section.empty
+    |> Ui.Section.withTitle scale.title
+    |> Ui.Section.withDescription scale.description
+    |> Ui.Section.addClass "container mx-auto"
+    |> Ui.Section.addAttr (A.attribute "data-likert" (scale.ratings |> List.length |> String.fromInt))
+    |> Ui.Section.addChild (H.ul [] (labels :: statements))
+    |> Ui.Section.toHtml
 
 --
 viewStatement : (String -> Rating -> msg) -> List Rating -> Statement -> Html msg
