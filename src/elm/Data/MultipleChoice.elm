@@ -1,5 +1,9 @@
 module Data.MultipleChoice exposing
-  ( ..
+  ( MultipleChoice, Option
+  , initSingleResponse, initSingleResponseWithOther, initMultipleResponse, initMultipleResponseWithOther
+  , select, add
+  , toHtml
+  , encode, decoder
   )
 
 {- Imports ------------------------------------------------------------------ -}
@@ -266,7 +270,7 @@ onEnter handler =
   Html.Events.on "keydown" (
     Json.Decode.field "key" Json.Decode.string
       |> Json.Decode.andThen (\key ->
-        if Debug.log "key" key == "Enter" then
+        if key == "Enter" then
           Json.Decode.at [ "target", "value" ] Json.Decode.string
             |> Json.Decode.map handler
         else
@@ -315,3 +319,58 @@ encodeOption option =
         [ ("type", Json.Encode.string "Other")
         , ("text", Json.Encode.string text)
         ]
+
+decoder : Json.Decode.Decoder MultipleChoice
+decoder =
+  Json.Decode.field "type" Json.Decode.string |> Json.Decode.andThen (\t ->
+    case t of
+      "SingleResponse"            -> singleResponseDecoder
+      "SingleResponseWithOther"   -> singleResponseWithOtherDecoder
+      "MultipleResponse"          -> multipleResponseDecoder
+      "MultipleResponseWithOther" -> multipleResponseWithOtherDecoder
+      _                           -> Json.Decode.fail t
+  )
+
+singleResponseDecoder : Json.Decode.Decoder MultipleChoice
+singleResponseDecoder =
+  Json.Decode.map3 (\q r o -> SingleResponse { question = q, response = r, options = o })
+    (Json.Decode.field "question" Json.Decode.string)
+    (Json.Decode.field "response" (Json.Decode.nullable optionDecoder))
+    (Json.Decode.field "options" (Json.Decode.list optionDecoder))
+
+singleResponseWithOtherDecoder : Json.Decode.Decoder MultipleChoice
+singleResponseWithOtherDecoder =
+  Json.Decode.map3 (\q r o -> SingleResponseWithOther { question = q, response = r, options = o })
+    (Json.Decode.field "question" Json.Decode.string)
+    (Json.Decode.field "response" (Json.Decode.nullable optionDecoder))
+    (Json.Decode.field "options" (Json.Decode.list optionDecoder))
+
+multipleResponseDecoder : Json.Decode.Decoder MultipleChoice
+multipleResponseDecoder =
+  Json.Decode.map3 (\q r o -> MultipleResponse { question = q, responses = r, options = o })
+    (Json.Decode.field "question" Json.Decode.string)
+    (Json.Decode.field "response" (Json.Decode.list optionDecoder))
+    (Json.Decode.field "options" (Json.Decode.list optionDecoder))
+
+multipleResponseWithOtherDecoder : Json.Decode.Decoder MultipleChoice
+multipleResponseWithOtherDecoder =
+  Json.Decode.map3 (\q r o -> MultipleResponseWithOther { question = q, responses = r, options = o })
+    (Json.Decode.field "question" Json.Decode.string)
+    (Json.Decode.field "response" (Json.Decode.list optionDecoder))
+    (Json.Decode.field "options" (Json.Decode.list optionDecoder))
+
+optionDecoder : Json.Decode.Decoder Option
+optionDecoder =
+  Json.Decode.field "type" Json.Decode.string |> Json.Decode.andThen (\t ->
+    case t of
+      "Fixed" ->
+        Json.Decode.map Fixed
+          (Json.Decode.field "text" Json.Decode.string)
+
+      "Other" ->
+        Json.Decode.map Other
+          (Json.Decode.field "text" Json.Decode.string)
+
+      _ ->
+        Json.Decode.fail t
+  )

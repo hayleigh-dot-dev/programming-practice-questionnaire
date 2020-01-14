@@ -69,91 +69,38 @@ type Page
   | Error
 
 type alias Flags =
-  { likert : List LikertScale
+  { demographics : List MultipleChoice
+  , likert : List LikertScale
   , qsort : QSort
   }
 
 flagsDecoder : Json.Decode.Decoder Flags
 flagsDecoder =
-  Json.Decode.map2 Flags
+  Json.Decode.map3 Flags
+    (Json.Decode.field "demographics" (Json.Decode.list Data.MultipleChoice.decoder))
     (Json.Decode.field "likert" (Json.Decode.list Data.Likert.decoder))
     (Json.Decode.field "qsort" Data.QSort.decoder)
 
 init : Json.Decode.Value -> Url -> Browser.Navigation.Key -> (App, Cmd Msg)
 init flags url key =
   case Json.Decode.decodeValue flagsDecoder flags of
-    Ok { likert, qsort } ->
+    Ok { demographics, likert, qsort } ->
       Tuple.Extra.pairWith Cmd.none <|
         ( updatePage url
         , key
         , { userConsent = Data.UserConsent.init
           , userName = ""
           , userDate = ""
-          , multipleChoiceQuestions =
-            [ Data.MultipleChoice.initSingleResponse
-                "How old are you?"
-                [ "Under 18"
-                , "18-24 years old"
-                , "25-34 years old"
-                , "35-44 years old"
-                , "45-54 years old"
-                , "Over 55"
-                ]
-            , Data.MultipleChoice.initSingleResponseWithOther
-                "What is your highest level of education achieved?"
-                [ "Less than A-levels (UK) or a high school diploma (US)"
-                , "A-levels (UK), high school diploma (US), or equivalent"
-                , "Bachelor's Degree"
-                , "Master's Degree"
-                , "Doctorate"
-                ]
-            , Data.MultipleChoice.initSingleResponseWithOther
-                "What was your primary field of study?" []
-            , Data.MultipleChoice.initSingleResponse
-                "How long have you been programming?"
-                [ "Less than 1 year"
-                , "1-2 years"
-                , "3-5 years"
-                , "6-10 years"
-                , "Over 10 years"
-                ]
-            , Data.MultipleChoice.initSingleResponse
-                "How long have you been programming interactive audio applications?"
-                [ "Less than 1 year"
-                , "1-2 years"
-                , "3-5 years"
-                , "6-10 years"
-                , "Over 10 years"
-                ]
-            , Data.MultipleChoice.initMultipleResponseWithOther
-                "Which of the following languages or frameworks have you used for creating interactive audio applications?"
-                [ "Csound"
-                , "FAUST"
-                , "JavaScript"
-                , "Max/MSP"
-                , "Processing"
-                , "Pure Data"
-                , "Reaktor"
-                , "SuperCollider"
-                ]
-            , Data.MultipleChoice.initSingleResponseWithOther
-                "Which of the following languages or frameworks are you most comfortable creating interactive audio applications with?"
-                [ "Csound"
-                , "FAUST"
-                , "JavaScript"
-                , "Max/MSP"
-                , "Processing"
-                , "Pure Data"
-                , "Reaktor"
-                , "SuperCollider"
-                ]
-            ]
+          , multipleChoiceQuestions = demographics
           , likertScales = likert
           , qsort = qsort
           }
         )
 
-    Err _ ->
+    Err e ->
+      let
+        _ = Debug.log "error" e
+      in
       Tuple.Extra.pairWith Cmd.none <|
         ( updatePage url
         , key
