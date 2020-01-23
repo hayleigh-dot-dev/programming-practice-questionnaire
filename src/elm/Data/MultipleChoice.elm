@@ -293,16 +293,25 @@ encode mc =
     SingleResponseWithOther { question, response, options } ->
       Json.Encode.object
         [ ("type", Json.Encode.string "SingleResponseWithOther")
+        , ("question", Json.Encode.string question)
+        , ("response", Maybe.map encodeOption response |> Maybe.withDefault Json.Encode.null)
+        , ("options", Json.Encode.list encodeOption options)
         ]
 
     MultipleResponse { question, responses, options } ->
       Json.Encode.object
         [ ("type", Json.Encode.string "MultipleResponse")
+        , ("question", Json.Encode.string question)
+        , ("response", Json.Encode.list encodeOption responses)
+        , ("options", Json.Encode.list encodeOption options)
         ]
 
     MultipleResponseWithOther { question, responses, options } ->
       Json.Encode.object
         [ ("type", Json.Encode.string "MultipleResponseWithOther")
+        , ("question", Json.Encode.string question)
+        , ("response", Json.Encode.list encodeOption responses)
+        , ("options", Json.Encode.list encodeOption options)
         ]
 
 encodeOption : Option -> Json.Encode.Value

@@ -14,7 +14,7 @@ import Ui.Section
 {- Types -------------------------------------------------------------------- -}
 type alias Data model =
   { model
-  | multipleChoiceQuestions : List MultipleChoice
+  | demographics : List MultipleChoice
   }
 
 type alias Events msg =
@@ -27,7 +27,7 @@ view : Data model -> Events msg -> List (Html msg)
 view model { optionSelected, optionAdded }=
   [ Html.main_
     [ Html.Attributes.class "container md:mx-auto px-4" ]
-    ( model.multipleChoiceQuestions |> List.indexedMap (\i mc ->
+    ( model.demographics |> List.indexedMap (\i mc ->
         Data.MultipleChoice.toHtml mc
           { optionSelected = optionSelected i
           , optionAdded = optionAdded i

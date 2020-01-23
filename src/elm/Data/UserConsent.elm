@@ -4,12 +4,14 @@ module Data.UserConsent exposing
   , update
   , hasUserConsent
   , toHtml
+  , encode
   )
 
 {- Imports ------------------------------------------------------------------ -}
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
+import Json.Encode
 
 {- Types -------------------------------------------------------------------- -}
 type alias UserConsent =
@@ -127,4 +129,14 @@ toHtml handler { explained, withdrawal, understand, personalData } =
             ++ "personal data"
         ]
       ]
+    ]
+
+{- Json --------------------------------------------------------------------- -}
+encode : UserConsent -> Json.Encode.Value
+encode { explained, withdrawal, understand, personalData } =
+  Json.Encode.object
+    [ ("explained", Json.Encode.bool explained )
+    , ("withdrawal", Json.Encode.bool withdrawal )
+    , ("understand", Json.Encode.bool understand )
+    , ("personalData", Json.Encode.bool personalData )
     ]

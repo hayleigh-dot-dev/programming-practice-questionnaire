@@ -123,19 +123,24 @@ rate rating qsort =
       Normal
         { data
         | unsorted =
-            unsorted |> List.filterMap (Just >> Maybe.map (\s ->
-              if Just s == selected then 
-                { s | rating = rating}
-              else
-                s
-            ))
+            if List.member selected statements then
+              List.map Just unsorted
+                |> (::) (Maybe.map (\s -> { s | rating = rating }) selected)
+                |> List.filterMap identity
+            else
+              unsorted |> List.map (\s ->
+                if Just s == selected then 
+                  { s | rating = rating}
+                else
+                  s
+              )
         , statements =
-            statements |> List.map (Maybe.map (\s ->
-              if Just s == selected then
-                { s | rating = rating }
-              else
+            statements |> List.map (\s ->
+              if s /= selected then
                 s
-            )) 
+              else
+                Nothing
+            )
         }
 
 --
@@ -145,7 +150,7 @@ sort position qsort =
     Basic data ->
       Basic data
 
-    Normal ({ selected, statements } as data) ->
+    Normal ({ selected, statements, unsorted } as data) ->
       Normal
         { data
         | statements =
@@ -157,6 +162,9 @@ sort position qsort =
               else
                 s
             )
+        , unsorted =
+            unsorted |> List.filter (Just >> (/=) selected)
+        , selected = Nothing
         }
 
 --
@@ -309,10 +317,10 @@ viewBasicSort events { title, description, statements, unsorted, selected } =
 
 --
 viewNormalSort : Events msg -> NormalData -> Html msg
-viewNormalSort events { title, description, statements, unsorted, selected, shape } =
+viewNormalSort events { title, description, statements, unsorted, selected, shape, length } =
   let
     statementInfo =
-      H.div [ A.class "flex h-96" ]
+      H.div [ A.class "flex h-96 overflow-y-scroll mb-4" ]
         ( selected |> Maybe.map viewSplitStatementInfo
             |> Maybe.withDefault [ H.text "" ]
         )
@@ -369,6 +377,21 @@ viewNormalSort events { title, description, statements, unsorted, selected, shap
     |> Ui.Section.addChildren
       [ statementInfo
       , H.hr [ A.class "border border-black mb-4" ] []
+      , H.div [ A.class "flex justify-between my-2" ]
+        ( length 
+            |> Basics.toFloat 
+            |> Basics.sqrt 
+            |> (*) 2 
+            |> Basics.floor
+            |> (\n -> n - 2)
+            |> List.range 0
+            |> List.map (\n -> n + 1 - (length |> Basics.toFloat |> Basics.sqrt |> Basics.floor))
+            |> List.map (\n -> 
+              H.span 
+                [ A.class "flex-1 mx-2 text-center font-bold" ] 
+                [ H.text (String.fromInt n) ]
+            )
+        )
       , normalDistribution
       , H.hr [ A.class "border border-black mb-4" ] []
       , sortButtons
@@ -376,62 +399,6 @@ viewNormalSort events { title, description, statements, unsorted, selected, shap
       ]
     |> Ui.Section.toHtml
     
-  -- Ui.Section.standard title description
-  --   [ A.attribute "data-q-sort" "normal" ]
-  --   [ H.div [ A.class "flex h-96" ]
-  --     ( selected |> Maybe.map viewSplitStatementInfo
-  --         |> Maybe.withDefault [ H.text "" ]
-  --     )
-  --   , H.hr [ A.class "border border-black mb-4" ] []
-  --   , H.div [ A.class "flex justify-between my-2" ]
-  --       ( List.indexedMap Tuple.pair statements
-  --           |> viewNormalDistribution events.selectMsg events.sortMsg selected shape
-  --       )
-  --   , H.hr [ A.class "border border-black mb-4" ] []
-  --   , H.div [ A.class "flex my-2" ]
-  --     [ Ui.Button.builder
-  --         |> Ui.Button.withText "Negative"
-  --         |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.red)
-  --         |> Ui.Button.withHandler (events.rateMsg Negative)
-  --         |> Ui.Button.withClass "flex-1 p-2 mr-4" 
-  --         |> Ui.Button.toHtml
-  --     , Ui.Button.builder
-  --         |> Ui.Button.withText "Neutral"
-  --         |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.grey)
-  --         |> Ui.Button.withHandler (events.rateMsg Neutral)
-  --         |> Ui.Button.withClass "flex-1 p-2 mx-2" 
-  --         |> Ui.Button.toHtml
-  --     , Ui.Button.builder
-  --         |> Ui.Button.withText "Positive"
-  --         |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.green)
-  --         |> Ui.Button.withHandler (events.rateMsg Positive)
-  --         |> Ui.Button.withClass "flex-1 p-2 ml-4" 
-  --         |> Ui.Button.toHtml
-  --     ]
-  --   , H.div [ A.class "flex my-2 h-64" ]
-  --     [ H.div [ A.class "flex-1 mr-4" ]
-  --       [ List.filter (.rating >> (==) Negative) unsorted
-  --           |> viewStatementList selected events.selectMsg
-  --       ]
-  --     , H.div [ A.class "flex-1 mx-2" ]
-  --       [ List.filter (.rating >> (==) Neutral) unsorted
-  --           |> viewStatementList selected events.selectMsg
-  --       ]
-  --     , H.div [ A.class "flex-1 ml-4" ]
-  --       [ List.filter (.rating >> (==) Positive) unsorted
-  --           |> viewStatementList selected events.selectMsg
-  --       ]
-  --     ]
-  --   , H.div [ A.class "flex mb-4" ]
-  --     [ Ui.Button.builder
-  --         |> Ui.Button.withText "Prev Step"
-  --         |> Ui.Button.withColour Ui.Colour.blue
-  --         |> Ui.Button.withHandler events.stepBackward
-  --         |> Ui.Button.withClass "flex-1 p-2"
-  --         |> Ui.Button.toHtml
-  --     ]
-  --   ]
-
 --
 ratingToString : Rating -> String
 ratingToString rating =
@@ -468,15 +435,15 @@ viewStatementInfo : Statement -> Html msg
 viewStatementInfo { title, description, image } =
   H.div
     []
-    [ H.h3 [ A.class "text-xl font-bold" ] 
+    [ H.h3 [ A.class "text-xl font-bold mb-4" ] 
       [ H.text title ]
+    , image |> Maybe.map (\src ->
+        H.img [ A.src src, A.class "w-full" ] []
+      ) |> Maybe.withDefault (H.text "")
     , H.div [] ( description |> List.map (\text ->
         H.p [ A.class "text-justify py-2 pr-4" ] 
           [ H.text text ]
       ))
-    , image |> Maybe.map (\src ->
-        H.img [ A.src src, A.class "w-full" ] []
-      ) |> Maybe.withDefault (H.text "")
     ]
 
 viewSplitStatementInfo : Statement -> List (Html msg)

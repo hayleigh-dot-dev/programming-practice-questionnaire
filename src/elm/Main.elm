@@ -5,7 +5,9 @@ module Main exposing
 {- Imports ------------------------------------------------------------------ -}
 import Browser
 import Browser.Navigation
+import Http
 import Json.Decode
+import Json.Encode
 import Set
 import Tuple.Extra
 import Url exposing (Url)
@@ -54,7 +56,7 @@ type alias Model =
   { userConsent : UserConsent
   , userName : String
   , userDate : String
-  , multipleChoiceQuestions : List MultipleChoice
+  , demographics : List MultipleChoice
   , likertScales : List LikertScale
   , qsort : QSort
   }
@@ -65,7 +67,6 @@ type Page
   | Demographics
   | Likert
   | QSort
-  | Submission
   | Error
 
 type alias Flags =
@@ -91,27 +92,35 @@ init flags url key =
         , { userConsent = Data.UserConsent.init
           , userName = ""
           , userDate = ""
-          , multipleChoiceQuestions = demographics
+          , demographics = demographics
           , likertScales = likert
           , qsort = qsort
           }
         )
 
-    Err e ->
-      let
-        _ = Debug.log "error" e
-      in
+    Err _ ->
       Tuple.Extra.pairWith Cmd.none <|
-        ( updatePage url
+        ( Error
         , key
         , { userConsent = Data.UserConsent.init
           , userName = ""
           , userDate = ""
-          , multipleChoiceQuestions = []
+          , demographics = []
           , likertScales = []
           , qsort = Data.QSort.init "" "" Set.empty
           }
         )
+
+encode : Model -> Json.Encode.Value
+encode model =
+  Json.Encode.object
+  [ ("userConsent", Data.UserConsent.encode model.userConsent)
+  , ("userName", Json.Encode.string model.userName)
+  , ("userDate", Json.Encode.string model.userDate)
+  , ("demographics", Json.Encode.list Data.MultipleChoice.encode model.demographics)
+  , ("likertScales", Json.Encode.list Data.Likert.encode model.likertScales)
+  , ("qsort", Data.QSort.encode model.qsort)
+  ]
 
 {- Update ------------------------------------------------------------------- -}
 type Msg
@@ -134,6 +143,8 @@ type Msg
   | StepForward
   | StepBackward
   -- Submission
+  | SubmitResponses
+  | GotSubmissionResponse (Result Http.Error ())
 
 update : Msg -> App -> (App, Cmd Msg)
 update msg (page, key, model) =
@@ -236,6 +247,19 @@ update msg (page, key, model) =
         , { model | qsort = Data.QSort.stepBackward model.qsort }
         )
 
+    SubmitResponses ->
+      Tuple.pair (page, key, model) <| Http.post
+        { url = "http://localhost:3000"
+        , body = Http.jsonBody <| encode model
+        , expect = Http.expectWhatever GotSubmissionResponse
+        }
+
+    GotSubmissionResponse _ ->
+      Tuple.Extra.pairWith Cmd.none <|
+        ( page
+        , key
+        , model
+        )
 
 updatePage : Url -> Page
 updatePage { path } =
@@ -246,14 +270,13 @@ updatePage { path } =
     "/1"        -> Demographics
     "/2"        -> Likert
     "/3"        -> QSort
-    "/4"        -> Submission
     _           -> Error
 
 updateMultipleChoice : (MultipleChoice -> MultipleChoice) -> Int -> Model -> Model
 updateMultipleChoice updateF j model =
-  model.multipleChoiceQuestions 
+  model.demographics 
     |> List.indexedMap (\i mc -> if i == j then updateF mc else mc)
-    |> (\multipleChoiceQuestions -> { model | multipleChoiceQuestions = multipleChoiceQuestions })
+    |> (\demographics -> { model | demographics = demographics })
 
 updateLikertScale : (LikertScale -> LikertScale) -> Int -> Model -> Model
 updateLikertScale updateF j model =
@@ -311,12 +334,8 @@ view (page, _, model) =
             , itemSorted = ItemSorted
             , stepForward = StepForward
             , stepBackward = StepBackward
+            , submit = SubmitResponses
             }
-      }
-
-    Submission ->
-      { title = title "Submission"
-      , body = []
       }
 
     Error ->
