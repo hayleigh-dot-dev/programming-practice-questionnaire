@@ -31,7 +31,7 @@ view =
         [ Html.text "2308" ]
       ]
     , Html.img
-      [ Html.Attributes.src "/images/qmul-logo.png"
+      [ Html.Attributes.src "images/qmul-logo.png"
       , Html.Attributes.class "mx-auto my-2"
       ] []
     , Html.p 

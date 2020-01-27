@@ -5,6 +5,7 @@ module Main exposing
 {- Imports ------------------------------------------------------------------ -}
 import Browser
 import Browser.Navigation
+import Html
 import Http
 import Json.Decode
 import Json.Encode
@@ -53,7 +54,8 @@ type alias App =
   (Page, Browser.Navigation.Key, Model)
 
 type alias Model =
-  { userConsent : UserConsent
+  { errorMessage : Maybe String
+  , userConsent : UserConsent
   , userName : String
   , userDate : String
   , demographics : List MultipleChoice
@@ -87,9 +89,10 @@ init flags url key =
   case Json.Decode.decodeValue flagsDecoder flags of
     Ok { demographics, likert, qsort } ->
       Tuple.Extra.pairWith Cmd.none <|
-        ( updatePage url
+        ( Info
         , key
-        , { userConsent = Data.UserConsent.init
+        , { errorMessage = Nothing
+          , userConsent = Data.UserConsent.init
           , userName = ""
           , userDate = ""
           , demographics = demographics
@@ -98,11 +101,12 @@ init flags url key =
           }
         )
 
-    Err _ ->
+    Err e ->
       Tuple.Extra.pairWith Cmd.none <|
         ( Error
         , key
-        , { userConsent = Data.UserConsent.init
+        , { errorMessage = Just (Json.Decode.errorToString e)
+          , userConsent = Data.UserConsent.init
           , userName = ""
           , userDate = ""
           , demographics = []
@@ -114,13 +118,23 @@ init flags url key =
 encode : Model -> Json.Encode.Value
 encode model =
   Json.Encode.object
-  [ ("userConsent", Data.UserConsent.encode model.userConsent)
-  , ("userName", Json.Encode.string model.userName)
-  , ("userDate", Json.Encode.string model.userDate)
-  , ("demographics", Json.Encode.list Data.MultipleChoice.encode model.demographics)
-  , ("likertScales", Json.Encode.list Data.Likert.encode model.likertScales)
-  , ("qsort", Data.QSort.encode model.qsort)
-  ]
+    [ ("userConsent", Data.UserConsent.encode model.userConsent)
+    , ("userName", Json.Encode.string model.userName)
+    , ("userDate", Json.Encode.string model.userDate)
+    , ("demographics", Json.Encode.list Data.MultipleChoice.encode model.demographics)
+    , ("likertScales", Json.Encode.list Data.Likert.encode model.likertScales)
+    , ("qsort", Data.QSort.encode model.qsort)
+    ]
+
+encodePartial : Model -> Json.Encode.Value
+encodePartial model =
+  Json.Encode.object
+    [ ("userConsent", Data.UserConsent.encode model.userConsent)
+    , ("userName", Json.Encode.string model.userName)
+    , ("userDate", Json.Encode.string model.userDate)
+    , ("demographics", Json.Encode.list Data.MultipleChoice.encode model.demographics)
+    , ("likertScales", Json.Encode.list Data.Likert.encode model.likertScales)
+    ]
 
 {- Update ------------------------------------------------------------------- -}
 type Msg
@@ -143,7 +157,8 @@ type Msg
   | StepForward
   | StepBackward
   -- Submission
-  | SubmitResponses
+  | SubmitPartialResponse
+  | SubmitResponse
   | GotSubmissionResponse (Result Http.Error ())
 
 update : Msg -> App -> (App, Cmd Msg)
@@ -247,9 +262,16 @@ update msg (page, key, model) =
         , { model | qsort = Data.QSort.stepBackward model.qsort }
         )
 
-    SubmitResponses ->
+    SubmitPartialResponse ->
       Tuple.pair (page, key, model) <| Http.post
-        { url = "http://localhost:3000"
+        { url = "http://138.37.236.203:9000"
+        , body = Http.jsonBody <| encodePartial model
+        , expect = Http.expectWhatever GotSubmissionResponse
+        }
+
+    SubmitResponse ->
+      Tuple.pair (page, key, model) <| Http.post
+        { url = "http://138.37.236.203:9000"
         , body = Http.jsonBody <| encode model
         , expect = Http.expectWhatever GotSubmissionResponse
         }
@@ -286,8 +308,8 @@ updateLikertScale updateF j model =
 
 {- View --------------------------------------------------------------------- -}
 title : String -> String
-title suffix =
-  "Understanding Programming Practice in Audio Software Programming – " ++ suffix
+title prefix =
+  prefix ++ " – Understanding Programming Practice in Audio Software Programming"
 
 view : App -> Browser.Document Msg
 view (page, _, model) =
@@ -322,6 +344,7 @@ view (page, _, model) =
       , body = 
           Pages.Likert.view model
             { itemChecked = ItemChecked
+            , submit = SubmitPartialResponse
             }
       }
 
@@ -334,16 +357,17 @@ view (page, _, model) =
             , itemSorted = ItemSorted
             , stepForward = StepForward
             , stepBackward = StepBackward
-            , submit = SubmitResponses
+            , submit = SubmitResponse
             }
       }
 
     Error ->
       { title = title "Error"
-      , body = []
+      , body =
+          [ Html.text <| Maybe.withDefault "Decod error" model.errorMessage ]
       }
 
 {- Subscriptions ------------------------------------------------------------ -}
 subscriptions : App -> Sub Msg
-subscriptions app =
+subscriptions _ =
   Sub.none
