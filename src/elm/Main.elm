@@ -264,14 +264,14 @@ update msg (page, key, model) =
 
     SubmitPartialResponse ->
       Tuple.pair (page, key, model) <| Http.post
-        { url = "http://138.37.236.203:9000"
+        { url = "https://qmul-questionnaire.herokuapp.com/"
         , body = Http.jsonBody <| encodePartial model
         , expect = Http.expectWhatever GotSubmissionResponse
         }
 
     SubmitResponse ->
       Tuple.pair (page, key, model) <| Http.post
-        { url = "http://138.37.236.203:9000"
+        { url = "https://qmul-questionnaire.herokuapp.com/"
         , body = Http.jsonBody <| encode model
         , expect = Http.expectWhatever GotSubmissionResponse
         }
