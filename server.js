@@ -27,20 +27,29 @@ const keys = ['userConsent', 'userName', 'userDate', 'demographics', 'likertScal
 // Takes the above keys and validates an object based on whether all these keys
 // are present. We *don't* validate the value of these keys, just their
 // existence.
-const validate = obj => Object
+const validate = (obj, keys) => Object
   .keys(obj)
   .reduce((valid, key) => valid && keys.includes(key), true)
 
-//
 app.post('*', (request, response) => {
-  const json = JSON.parse(request.body)
-  const isValid = validate(json)
+  const json = request.body
+  const isPartial = validate(json, keys.filter(k => k !== 'qsort'))
+  const isValid = validate(json, keys)
 
   if (isValid) {
     const body = JSON.stringify(json, null, 2)
 
     send({
       subject: `New Questionnaire Response: ${json.userName} – ${json.userDate}`,
+      text: body
+    })
+
+    response.sendStatus(200)
+  } else if (isPartial) {
+    const body = JSON.stringify(json, null, 2)
+
+    send({
+      subject: `New Questionnaire Partial Response: ${json.userName} – ${json.userDate}`,
       text: body
     })
 
