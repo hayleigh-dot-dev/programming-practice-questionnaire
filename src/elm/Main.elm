@@ -311,7 +311,7 @@ update msg (page, key, model) =
 
 updatePage : Url -> Page
 updatePage { path } =
-  case path of
+  case String.replace "/programming-practice-questionnaire/" "/" path of
     "/"         -> Info
     "/info"     -> Info
     "/consent"  -> Consent
@@ -400,7 +400,7 @@ view (page, _, model) =
     Error ->
       { title = title "Error"
       , body =
-          [ Html.text <| Maybe.withDefault "Decod error" model.errorMessage ]
+          [ Html.text <| Maybe.withDefault "Decode error" model.errorMessage ]
       }
 
 {- Subscriptions ------------------------------------------------------------ -}
