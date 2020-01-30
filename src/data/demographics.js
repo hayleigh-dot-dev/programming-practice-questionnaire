@@ -41,7 +41,7 @@ export const demographics = [
     'Master\'s Degree',
     'Doctorate'
   ]),
-  singleResponseWithOther('What was your primary field of study?', [
+  multipleResponseWithOther('What was/is your primary field of study?', [
     'Computer Science, Software Engineering, or related field of study',
     'Music, Music Technology, or related field of study'
   ]),
@@ -69,7 +69,7 @@ export const demographics = [
     'SuperCollider',
     'Web Audio API [JavaScript]'
   ]),
-  multipleResponseWithOther('Which of the following languages or frameworks do you have the most experience creating interactive audio software with?', [
+  singleResponseWithOther('Which of the following languages or frameworks do you have the most experience creating interactive audio software with?', [
     'AudioKit [Swift]',
     'Csound',
     'FAUST',
