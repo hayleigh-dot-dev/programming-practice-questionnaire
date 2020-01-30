@@ -23,6 +23,7 @@ import Pages.Consent
 import Pages.Demographics
 import Pages.Likert
 import Pages.QSort
+import Pages.Submission
 
 {- Main --------------------------------------------------------------------- -}
 main : Program Json.Decode.Value App Msg
@@ -58,6 +59,7 @@ type alias Model =
   , userConsent : UserConsent
   , userName : String
   , userDate : String
+  , userEmail : String
   , demographics : List MultipleChoice
   , likertScales : List LikertScale
   , qsort : QSort
@@ -69,6 +71,7 @@ type Page
   | Demographics
   | Likert
   | QSort
+  | Submission
   | Error
 
 type alias Flags =
@@ -89,12 +92,13 @@ init flags url key =
   case Json.Decode.decodeValue flagsDecoder flags of
     Ok { demographics, likert, qsort } ->
       Tuple.Extra.pairWith Cmd.none <|
-        ( Info
+        ( updatePage url
         , key
         , { errorMessage = Nothing
           , userConsent = Data.UserConsent.init
           , userName = ""
           , userDate = ""
+          , userEmail = ""
           , demographics = demographics
           , likertScales = likert
           , qsort = qsort
@@ -109,6 +113,7 @@ init flags url key =
           , userConsent = Data.UserConsent.init
           , userName = ""
           , userDate = ""
+          , userEmail = ""
           , demographics = []
           , likertScales = []
           , qsort = Data.QSort.init "" "" Set.empty
@@ -157,8 +162,10 @@ type Msg
   | StepForward
   | StepBackward
   -- Submission
+  | EmailUpdated String
   | SubmitPartialResponse
   | SubmitResponse
+  | SubmitEmail
   | GotSubmissionResponse (Result Http.Error ())
 
 update : Msg -> App -> (App, Cmd Msg)
@@ -262,17 +269,36 @@ update msg (page, key, model) =
         , { model | qsort = Data.QSort.stepBackward model.qsort }
         )
 
+    EmailUpdated email ->
+      Tuple.Extra.pairWith Cmd.none <|
+        ( page
+        , key
+        , { model | userEmail = email  }
+        )
+
     SubmitPartialResponse ->
       Tuple.pair (page, key, model) <| Http.post
-        { url = "https://qmul-questionnaire.herokuapp.com/"
+        { url = "https://qmul-questionnaire.herokuapp.com/partial"
         , body = Http.jsonBody <| encodePartial model
         , expect = Http.expectWhatever GotSubmissionResponse
         }
 
     SubmitResponse ->
       Tuple.pair (page, key, model) <| Http.post
-        { url = "https://qmul-questionnaire.herokuapp.com/"
+        { url = "https://qmul-questionnaire.herokuapp.com/complete"
         , body = Http.jsonBody <| encode model
+        , expect = Http.expectWhatever GotSubmissionResponse
+        }
+
+    SubmitEmail ->
+      Tuple.pair (page, key, model) <| Http.post
+        { url = "https://qmul-questionnaire.herokuapp.com/email"
+        , body = Http.jsonBody <|
+            Json.Encode.object
+              [ ("userName", Json.Encode.string model.userName)
+              , ("userDate", Json.Encode.string model.userDate)
+              , ("email", Json.Encode.string model.userEmail)
+              ]
         , expect = Http.expectWhatever GotSubmissionResponse
         }
 
@@ -292,6 +318,7 @@ updatePage { path } =
     "/1"        -> Demographics
     "/2"        -> Likert
     "/3"        -> QSort
+    "/success"  -> Submission
     _           -> Error
 
 updateMultipleChoice : (MultipleChoice -> MultipleChoice) -> Int -> Model -> Model
@@ -358,6 +385,15 @@ view (page, _, model) =
             , stepForward = StepForward
             , stepBackward = StepBackward
             , submit = SubmitResponse
+            }
+      }
+
+    Submission ->
+      { title = title "Success"
+      , body =
+          Pages.Submission.view
+            { update = EmailUpdated
+            , submit = SubmitEmail
             }
       }
 
