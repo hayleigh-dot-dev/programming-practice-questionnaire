@@ -17,12 +17,11 @@ type alias Data model =
 
 type alias Events msg =
   { itemChecked : Int -> String -> Data.Likert.Rating -> msg
-  , submit : msg
   }
 
 {- View --------------------------------------------------------------------- -}
 view : Data model -> Events msg -> List (Html msg)
-view model { itemChecked, submit } =
+view model { itemChecked } =
   [ Html.main_
     [ Html.Attributes.class "container md:mx-auto px-4" ]
     (Html.div
@@ -61,7 +60,6 @@ view model { itemChecked, submit } =
           <| "flex-1 ml-10 bg-blue-500 hover:bg-blue-700 text-white font-bold "
           ++ "py-2 px-4 rounded"
       , Html.Attributes.href "/3" 
-      , Html.Events.onClick submit
       ]
       [ Html.text "next" ]
     ]

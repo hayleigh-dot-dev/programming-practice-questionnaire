@@ -163,20 +163,34 @@ type Msg
   | StepBackward
   -- Submission
   | EmailUpdated String
-  | SubmitPartialResponse
-  | SubmitResponse
   | SubmitEmail
   | GotSubmissionResponse (Result Http.Error ())
 
 update : Msg -> App -> (App, Cmd Msg)
 update msg (page, key, model) =
   case msg of
-    UrlChanged url ->
-      Tuple.Extra.pairWith Cmd.none <|
-        ( updatePage url
-        , key
-        , model
-        )
+    UrlChanged ({ path } as url) ->
+      case path of
+        "/3" ->
+          Tuple.pair (updatePage url, key, model) <| Http.post
+            { url = "https://qmul-questionnaire.herokuapp.com/partial"
+            , body = Http.jsonBody <| encodePartial model
+            , expect = Http.expectWhatever GotSubmissionResponse
+            }
+
+        "/success" ->
+          Tuple.pair (updatePage url, key, model) <| Http.post
+            { url = "https://qmul-questionnaire.herokuapp.com/complete"
+            , body = Http.jsonBody <| encode model
+            , expect = Http.expectWhatever GotSubmissionResponse
+            }
+
+        _ ->
+          Tuple.Extra.pairWith Cmd.none <|
+            ( updatePage url
+            , key
+            , model
+            )
 
     InternalUrlRequested url ->
       Tuple.Extra.pairWith (Browser.Navigation.pushUrl key (Url.toString url)) <|
@@ -276,20 +290,6 @@ update msg (page, key, model) =
         , { model | userEmail = email  }
         )
 
-    SubmitPartialResponse ->
-      Tuple.pair (page, key, model) <| Http.post
-        { url = "https://qmul-questionnaire.herokuapp.com/partial"
-        , body = Http.jsonBody <| encodePartial model
-        , expect = Http.expectWhatever GotSubmissionResponse
-        }
-
-    SubmitResponse ->
-      Tuple.pair (page, key, model) <| Http.post
-        { url = "https://qmul-questionnaire.herokuapp.com/complete"
-        , body = Http.jsonBody <| encode model
-        , expect = Http.expectWhatever GotSubmissionResponse
-        }
-
     SubmitEmail ->
       Tuple.pair (page, key, model) <| Http.post
         { url = "https://qmul-questionnaire.herokuapp.com/email"
@@ -371,7 +371,6 @@ view (page, _, model) =
       , body = 
           Pages.Likert.view model
             { itemChecked = ItemChecked
-            , submit = SubmitPartialResponse
             }
       }
 
@@ -384,7 +383,6 @@ view (page, _, model) =
             , itemSorted = ItemSorted
             , stepForward = StepForward
             , stepBackward = StepBackward
-            , submit = SubmitResponse
             }
       }
 

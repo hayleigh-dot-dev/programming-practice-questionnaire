@@ -21,12 +21,11 @@ type alias Events msg =
   , itemSorted : Int -> msg
   , stepForward : msg
   , stepBackward : msg
-  , submit : msg
   }
 
 {- View --------------------------------------------------------------------- -}
 view : Data model -> Events msg -> List (Html msg)
-view model { itemSelected, itemRated, itemSorted, stepForward, stepBackward, submit } =
+view model { itemSelected, itemRated, itemSorted, stepForward, stepBackward } =
   [ Html.main_
     [ Html.Attributes.class "container md:mx-auto px-4" ]
     [ model.qsort |> Data.QSort.toHtml
@@ -47,11 +46,11 @@ view model { itemSelected, itemRated, itemSorted, stepForward, stepBackward, sub
       , Html.Attributes.href "/2" 
       ]
       [ Html.text "back" ]
-    , Html.button
+    , Html.a
       [ Html.Attributes.class 
           <| "flex-1 ml-10 bg-blue-500 hover:bg-blue-700 text-white font-bold "
           ++ "py-2 px-4 rounded"
-      , Html.Events.onClick submit
+      , Html.Attributes.href "/success"
       ]
       [ Html.text "submit" ]
     ]
