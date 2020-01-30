@@ -31,21 +31,10 @@ const validate = (obj, keys) => Object
   .keys(obj)
   .reduce((valid, key) => valid && keys.includes(key), true)
 
-app.post('*', (request, response) => {
+app.post('/partial', (request, response) => {
   const json = request.body
-  const isPartial = validate(json, keys.filter(k => k !== 'qsort'))
-  const isValid = validate(json, keys)
-
+  const isValid = validate(json, keys.filter(k => k !== 'qsort'))
   if (isValid) {
-    const body = JSON.stringify(json, null, 2)
-
-    send({
-      subject: `New Questionnaire Response: ${json.userName} – ${json.userDate}`,
-      text: body
-    })
-
-    response.sendStatus(200)
-  } else if (isPartial) {
     const body = JSON.stringify(json, null, 2)
 
     send({
@@ -59,4 +48,35 @@ app.post('*', (request, response) => {
 
     response.sendStatus(418)
   }
+})
+
+app.post('/complete', (request, response) => {
+  const json = request.body
+  const isValid = validate(json, keys)
+
+  if (isValid) {
+    const body = JSON.stringify(json, null, 2)
+
+    send({
+      subject: `New Questionnaire Response: ${json.userName} – ${json.userDate}`,
+      text: body
+    })
+
+    response.sendStatus(200)
+  } else {
+    console.log(`Invalid json: ${console.dir(json)}`)
+
+    response.sendStatus(418)
+  }
+})
+
+app.post('/email', (request, response) => {
+  const json = request.body
+
+  send({
+    subject: `New Questionnaire Email Response: ${json.userName} - ${json.userDate}`,
+    body: json.email
+  })
+
+  response.sendStatus(418)
 })
