@@ -5,7 +5,7 @@ module Ui.Button exposing
   )
 
 -- Imports ---------------------------------------------------------------------
-import Html as H exposing (Html, Attribute)
+import Html as Html exposing (Html, Attribute)
 import Html.Attributes as A
 import Html.Events as E
 import Ui.Colour exposing (Colour)
@@ -73,5 +73,5 @@ toHtml button =
       , Maybe.map E.onClick button.handler
       ] |> List.filterMap identity
   in
-  H.button (attrs ++ button.attrs)
-    [ H.text <| Maybe.withDefault "" button.text ]
+  Html.button (attrs ++ button.attrs)
+    [ Html.text <| Maybe.withDefault "" button.text ]

@@ -8,7 +8,7 @@ module Data.Likert exposing
   )
 
 -- Imports ---------------------------------------------------------------------
-import Html as H exposing (Html)
+import Html as Html exposing (Html)
 import Html.Attributes as A
 import Html.Events as E
 import Json.Encode as Encode
@@ -128,7 +128,7 @@ toHtml handler scale =
     |> Ui.Section.withDescription scale.description
     |> Ui.Section.addClass "container mx-auto"
     |> Ui.Section.addAttr (A.attribute "data-likert" (scale.ratings |> List.length |> String.fromInt))
-    |> Ui.Section.addChild (H.ul [] (labels :: statements))
+    |> Ui.Section.addChild (Html.ul [] (labels :: statements))
     |> Ui.Section.toHtml
 
 --
@@ -139,8 +139,8 @@ viewStatement handler ratings ( currentRating, statement ) =
     radios : List (Html msg)
     radios =
       ratings |> List.map (\r ->
-        H.span [ A.class "flex justify-center" ]
-          [ H.input 
+        Html.span [ A.class "flex justify-center" ]
+          [ Html.input 
             [ A.type_ "radio", A.checked (r == currentRating)
             , A.class "flex justify-center"
             , E.onClick (handler statement r)
@@ -148,16 +148,16 @@ viewStatement handler ratings ( currentRating, statement ) =
           ]
       )
   in
-  H.li [ A.class "m-2" ]
-    ( H.span [ A.class "mr-8" ] [ H.text statement ] :: radios )
+  Html.li [ A.class "m-2" ]
+    ( Html.span [ A.class "mr-8" ] [ Html.text statement ] :: radios )
 
 --
 viewLabels : List Rating -> Html msg
 viewLabels ratings =
-  H.li [ A.class "mb-4" ]
-    ( H.br [] [] :: (ratings |> List.map (\r ->
-      H.span [ A.class "text-center" ]
-        [ H.text <| ratingToString r ]
+  Html.li [ A.class "mb-4" ]
+    ( Html.br [] [] :: (ratings |> List.map (\r ->
+      Html.span [ A.class "text-center" ]
+        [ Html.text <| ratingToString r ]
     )))
 
 -- JSON ------------------------------------------------------------------------

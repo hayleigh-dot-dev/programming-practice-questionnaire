@@ -5,7 +5,6 @@ module Pages.Info exposing
 {- Imports ------------------------------------------------------------------ -}
 import Html exposing (Html)
 import Html.Attributes
-import Html.Events
 
 {- View --------------------------------------------------------------------- -}
 view : List (Html msg)

@@ -8,7 +8,7 @@ module Data.QSort exposing
   )
 
 -- Imports ---------------------------------------------------------------------
-import Html as H exposing (Html)
+import Html as Html exposing (Html)
 import Html.Attributes as A
 import Html.Events as E
 import Json.Decode as Decode exposing (Decoder)
@@ -234,18 +234,56 @@ toHtml events qsort =
 viewBasicSort : Events msg -> BasicData -> Html msg
 viewBasicSort events { title, description, statements, unsorted, selected } =
   let
+    instructions =
+      Html.div
+        []
+        [ Html.h3 
+          [ A.class "font-bold text-xl" ]
+          [ Html.text "Instructions" ]
+        , Html.p
+          [ A.class "mb-2" ]
+          [ Html.text
+              <| "For this part of the exercise you must rate features on whether "
+              ++ "they might have a positive or negative effect on your programming "
+              ++ "practice, or none at all."
+          ]
+        , Html.p
+          [ A.class "mb-2" ]
+          [ Html.text
+              <| "Select an item from the list on the left. A description and "
+              ++ "sometimes an image will appear on the right. This can be helpful "
+              ++ "if you're not familiar with the feature being described."
+          ]
+        , Html.p
+          [ A.class "mb-2" ]
+          [ Html.text
+              <| "Consider how this feature does, or might, impact your programming "
+              ++ "practice. Then select one of the buttons below to rate that "
+              ++ "feature as Negative, Neutral, or Positive. Once all statements "
+              ++ "have been rated, click 'Next Step' to move to the second part "
+              ++ "of the exercise."
+          ]
+        , Html.p
+          [ A.class "mb-2" ]
+          [ Html.text
+              <| "There are 36 statements in total and the exercise should take "
+              ++ "about 15 to 20 minutes."
+          ]
+        , Html.hr [ A.class "border border-black mb-4" ] []
+        ]
+
     unsortedList =
-      H.div [ A.class "flex my-2 h-96" ]
-        [ H.div [ A.class "flex-1 mr-4" ]
+      Html.div [ A.class "flex my-2 h-96" ]
+        [ Html.div [ A.class "flex-1 mr-4" ]
           [ viewStatementList selected events.selectMsg unsorted ]
-        , H.div [ A.class "flex-1 overflow-y-scroll overflow-x-hidden" ]
+        , Html.div [ A.class "flex-1 overflow-y-scroll overflow-x-hidden" ]
           [ selected |> Maybe.map viewStatementInfo
-              |> Maybe.withDefault (H.text "")
+              |> Maybe.withDefault (Html.text "")
           ]
         ]
 
     controls =
-      H.div [ A.class "flex my-2" ]
+      Html.div [ A.class "flex my-2" ]
         [ Ui.Button.builder
             |> Ui.Button.withText "Negative"
             |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.red)
@@ -267,23 +305,23 @@ viewBasicSort events { title, description, statements, unsorted, selected } =
         ]
 
     sortedList =
-      H.div [ A.class "flex mt-4 h-64" ]
-        [ H.div [ A.class "flex-1 mr-4" ]
+      Html.div [ A.class "flex mt-4 h-64" ]
+        [ Html.div [ A.class "flex-1 mr-4" ]
           [ List.filter (.rating >> (==) Negative) statements
               |> viewStatementList selected events.selectMsg
           ]
-        , H.div [ A.class "flex-1 mx-2" ]
+        , Html.div [ A.class "flex-1 mx-2" ]
           [ List.filter (.rating >> (==) Neutral) statements
               |> viewStatementList selected events.selectMsg
           ]
-        , H.div [ A.class "flex-1 ml-4" ]
+        , Html.div [ A.class "flex-1 ml-4" ]
           [ List.filter (.rating >> (==) Positive) statements
               |> viewStatementList selected events.selectMsg
           ]
         ]
 
     nextButton =
-      H.div [ A.class "flex mb-4" ]
+      Html.div [ A.class "flex mb-4" ]
         [ Ui.Button.builder
           |> Ui.Button.withText "Next Step"
           |> Ui.Button.withColour (
@@ -309,6 +347,7 @@ viewBasicSort events { title, description, statements, unsorted, selected } =
     |> Ui.Section.withDescription description
     |> Ui.Section.addClass "container mx-auto"
     |> Ui.Section.addAttr (A.attribute "data-q-sort" "basic")
+    |> Ui.Section.addChild instructions
     |> Ui.Section.addChild unsortedList
     |> Ui.Section.addChild controls
     |> Ui.Section.addChild sortedList
@@ -319,20 +358,54 @@ viewBasicSort events { title, description, statements, unsorted, selected } =
 viewNormalSort : Events msg -> NormalData -> Html msg
 viewNormalSort events { title, description, statements, unsorted, selected, shape, length } =
   let
+    instructions =
+      Html.div
+        []
+        [ Html.h3 
+          [ A.class "font-bold text-xl" ]
+          [ Html.text "Instructions" ]
+        , Html.p
+          [ A.class "mb-2" ]
+          [ Html.text
+              <| "In this part of the exercise you'll need to arrange the features "
+              ++ "you just rated from most negatively impactful to your practice "
+              ++ "to most positively impactful."
+          ]
+        , Html.p
+          [ A.class "mb-2" ]
+          [ Html.text
+              <| "A rating of -5 corresponds to 'Most Negatively Impactful' and "
+              ++ "a rating of 5 corresponds to 'Most Positively Impactful'. Ratings "
+              ++ "closer to 0 indicate that the feature has little to no impact "
+              ++ "on your practice. For ratings that hold more than on feature, "
+              ++ "there is no signficance to ordering. This means that two items "
+              ++ "rated at 3 have roughly the same impact on your practice."
+          ]
+        , Html.p
+          [ A.class "mb-2" ]
+          [ Html.text
+              <| "Start by picking out the most impactful features and working your "
+              ++ "way inwoards. Don't worry if you have more items in one category "
+              ++ "than another, the scale is relative. This means a feature rated "
+              ++ "at -5 isn't necessarily as impactful as a feature rated at 5."
+          ]
+        , Html.hr [ A.class "border border-black mb-4" ] []
+        ]
+
     statementInfo =
-      H.div [ A.class "flex h-96 overflow-y-scroll mb-4" ]
+      Html.div [ A.class "flex h-96 overflow-y-scroll mb-4" ]
         ( selected |> Maybe.map viewSplitStatementInfo
-            |> Maybe.withDefault [ H.text "" ]
+            |> Maybe.withDefault [ Html.text "" ]
         )
 
     normalDistribution =
-      H.div [ A.class "flex justify-between my-2" ]
+      Html.div [ A.class "flex justify-between my-2" ]
         ( List.indexedMap Tuple.pair statements
             |> viewNormalDistribution events.selectMsg events.sortMsg selected shape
         )
 
     sortButtons =
-      H.div [ A.class "flex my-2" ]
+      Html.div [ A.class "flex my-2" ]
         [ Ui.Button.builder
             |> Ui.Button.withText "Negative"
             |> Ui.Button.withColour (Ui.Colour.lighten Ui.Colour.red)
@@ -354,16 +427,16 @@ viewNormalSort events { title, description, statements, unsorted, selected, shap
         ]
 
     unsortedList =
-      H.div [ A.class "flex my-2 h-64" ]
-        [ H.div [ A.class "flex-1 mr-4" ]
+      Html.div [ A.class "flex my-2 h-64" ]
+        [ Html.div [ A.class "flex-1 mr-4" ]
           [ List.filter (.rating >> (==) Negative) unsorted
               |> viewStatementList selected events.selectMsg
           ]
-        , H.div [ A.class "flex-1 mx-2" ]
+        , Html.div [ A.class "flex-1 mx-2" ]
           [ List.filter (.rating >> (==) Neutral) unsorted
               |> viewStatementList selected events.selectMsg
           ]
-        , H.div [ A.class "flex-1 ml-4" ]
+        , Html.div [ A.class "flex-1 ml-4" ]
           [ List.filter (.rating >> (==) Positive) unsorted
               |> viewStatementList selected events.selectMsg
           ]
@@ -374,10 +447,11 @@ viewNormalSort events { title, description, statements, unsorted, selected, shap
     |> Ui.Section.withDescription description
     |> Ui.Section.addClass "container mx-auto"
     |> Ui.Section.addAttr (A.attribute "data-q-sort" "normal")
+    |> Ui.Section.addChild instructions
     |> Ui.Section.addChildren
       [ statementInfo
-      , H.hr [ A.class "border border-black mb-4" ] []
-      , H.div [ A.class "flex justify-between my-2" ]
+      , Html.hr [ A.class "border border-black mb-4" ] []
+      , Html.div [ A.class "flex justify-between my-2" ]
         ( length 
             |> Basics.toFloat 
             |> Basics.sqrt 
@@ -387,13 +461,13 @@ viewNormalSort events { title, description, statements, unsorted, selected, shap
             |> List.range 0
             |> List.map (\n -> n + 1 - (length |> Basics.toFloat |> Basics.sqrt |> Basics.floor))
             |> List.map (\n -> 
-              H.span 
+              Html.span 
                 [ A.class "flex-1 mx-2 text-center font-bold" ] 
-                [ H.text (String.fromInt n) ]
+                [ Html.text (String.fromInt n) ]
             )
         )
       , normalDistribution
-      , H.hr [ A.class "border border-black mb-4" ] []
+      , Html.hr [ A.class "border border-black mb-4" ] []
       , sortButtons
       , unsortedList
       ]
@@ -410,7 +484,7 @@ ratingToString rating =
 --
 viewStatementList : Maybe Statement -> (Statement -> msg) -> List Statement -> Html msg
 viewStatementList selected handler statements =
-  H.ul [ A.class "h-full overflow-y-scroll overflow-x-hidden" ]
+  Html.ul [ A.class "h-full overflow-y-scroll overflow-x-hidden" ]
     ( statements |> List.map (\statement ->
         viewStatementItem (Just statement == selected) (handler statement) statement
       )
@@ -419,7 +493,7 @@ viewStatementList selected handler statements =
 --
 viewStatementItem : Bool -> msg -> Statement ->  Html msg
 viewStatementItem active handler { title, key } =
-  H.li 
+  Html.li 
     [ E.onClick handler
     , A.class "cursor-pointer my-2 p-2"
     , if active then
@@ -427,39 +501,39 @@ viewStatementItem active handler { title, key } =
       else
         A.class "bg-gray-300 hover:bg-gray-400"
     ] 
-    [ H.span [ A.class "font-bold pr-2" ] [ H.text <| "[" ++ key ++ "]" ]
-    , H.span [ A.class "text-justify" ] [ H.text title ]
+    [ Html.span [ A.class "font-bold pr-2" ] [ Html.text <| "[" ++ key ++ "]" ]
+    , Html.span [ A.class "text-justify" ] [ Html.text title ]
     ]
 
 viewStatementInfo : Statement -> Html msg
 viewStatementInfo { title, description, image } =
-  H.div
+  Html.div
     []
-    [ H.h3 [ A.class "text-xl font-bold mb-4" ] 
-      [ H.text title ]
+    [ Html.h3 [ A.class "text-xl font-bold mb-4" ] 
+      [ Html.text title ]
     , image |> Maybe.map (\src ->
-        H.img [ A.src src, A.class "w-full" ] []
-      ) |> Maybe.withDefault (H.text "")
-    , H.div [] ( description |> List.map (\text ->
-        H.p [ A.class "text-justify py-2 pr-4" ] 
-          [ H.text text ]
+        Html.img [ A.src src, A.class "w-full" ] []
+      ) |> Maybe.withDefault (Html.text "")
+    , Html.div [] ( description |> List.map (\text ->
+        Html.p [ A.class "text-justify py-2 pr-4" ] 
+          [ Html.text text ]
       ))
     ]
 
 viewSplitStatementInfo : Statement -> List (Html msg)
 viewSplitStatementInfo { title, description, image } =
-  [ H.div [ A.class "flex-1 pr-4" ]
-    [ H.h3 [ A.class "text-xl font-bold" ] 
-      [ H.text title ]
-    , H.div [] ( description |> List.map (\text ->
-        H.p [ A.class "py-2 text-justify" ] 
-          [ H.text text ]
+  [ Html.div [ A.class "flex-1 pr-4" ]
+    [ Html.h3 [ A.class "text-xl font-bold" ] 
+      [ Html.text title ]
+    , Html.div [] ( description |> List.map (\text ->
+        Html.p [ A.class "py-2 text-justify" ] 
+          [ Html.text text ]
       ))
     ]
-  , H.div [ A.class "flex-1 pl-4" ]
+  , Html.div [ A.class "flex-1 pl-4" ]
     [ image |> Maybe.map (\src ->
-        H.img [ A.src src, A.class "w-full" ] []
-      ) |> Maybe.withDefault (H.text "")
+        Html.img [ A.src src, A.class "w-full" ] []
+      ) |> Maybe.withDefault (Html.text "")
     ]
   ]
 
@@ -469,7 +543,7 @@ viewNormalDistribution selectMsg sortMsg selectedStatement items statements =
   List.foldl (\n  (ns, ss) -> List.take n ss |> (\ss_ -> (ss_ :: ns, List.drop n ss))) ([], statements) items
     |> Tuple.first
     |> List.map (\ss ->
-      H.ul [ A.class "flex-1 mx-2 flex-col" ]
+      Html.ul [ A.class "flex-1 mx-2 flex-col" ]
         ( ss |> List.map (viewQSortItem selectMsg sortMsg selectedStatement)
         )
     )  
@@ -478,20 +552,20 @@ viewQSortItem : (Statement -> msg) -> (Int -> msg) -> Maybe Statement -> (Int, M
 viewQSortItem selectMsg sortMsg selectedStatement (n, s) =
   case s of
     Just ({ key } as statement) ->
-      H.li
+      Html.li
         [ A.class "w-full mb-2 h-10 hover:bg-blue-500 rounded flex content-center items-center align-center" 
         , if selectedStatement == s then
             A.class "bg-blue-300"
           else
             A.class "bg-gray-400"
         , E.onClick (selectMsg statement) ]
-        [ H.div
+        [ Html.div
           [ A.class "font-bold p-2 mx-auto" ]
-          [ H.text <| "[" ++ key ++ "]" ]
+          [ Html.text <| "[" ++ key ++ "]" ]
         ]
 
     Nothing ->
-      H.li
+      Html.li
         [ A.class "w-full mb-2 h-10 bg-gray-400 hover:bg-gray-500 rounded flex content-center align-center" 
         , E.onClick (sortMsg n)
         ] []

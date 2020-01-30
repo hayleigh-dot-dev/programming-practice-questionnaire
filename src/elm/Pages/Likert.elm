@@ -25,9 +25,27 @@ view : Data model -> Events msg -> List (Html msg)
 view model { itemChecked, submit } =
   [ Html.main_
     [ Html.Attributes.class "container md:mx-auto px-4" ]
-    ( model.likertScales |> List.indexedMap (\i scale ->
+    (Html.div
+      [ Html.Attributes.class "container md:mx-auto px-16 mt-8 text-xl" ]
+      [ Html.p
+        [ Html.Attributes.class "mb-2" ]
+        [ Html.text
+            <| "This section is all about your programming practice. There are a "
+            ++ "series of statements arranged into topics that you'll need to rate "
+            ++ "your level of agreement with."
+        ]
+        , Html.p
+          [ Html.Attributes.class "mb-2" ]
+          [ Html.text
+              <| "When considering each statement, think about how you approach a "
+              ++ "typical audio programming project and answer accordingly. It's "
+              ++ "important to stress that there are no right or 'best' responses "
+              ++ "to each of these statements."
+          ]
+        ] 
+      :: ( model.likertScales |> List.indexedMap (\i scale ->
         Data.Likert.toHtml (itemChecked i) scale
-    ))
+    )))
   , Html.footer
     [ Html.Attributes.class "flex mt-4 py-2 container md:mx-auto px-4" ]
     [ Html.a

@@ -5,11 +5,8 @@ module Pages.Demographics exposing
 {- Imports ------------------------------------------------------------------ -}
 import Html exposing (Html)
 import Html.Attributes
-import Html.Events
 
 import Data.MultipleChoice exposing (MultipleChoice)
-
-import Ui.Section
 
 {- Types -------------------------------------------------------------------- -}
 type alias Data model =

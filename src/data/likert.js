@@ -14,7 +14,7 @@ export const likertScale = (title, description, statements) => ({
 
 export const likert = [
   likertScale(
-    'How well defined is the end goal?',
+    'In a typical audio programming project, how well defined is the end goal?',
     'Some programmers have a very clear idea of what the finished piece of software should look like and what it should do. Others take a more exploratory approach. The following statements are about how clearly defined the end-goal of a project is before you start programming.',
     [
       'Before starting to program I have a clear idea what the program will look like.',
@@ -25,7 +25,7 @@ export const likert = [
     ]
   ),
   likertScale(
-    'How much time do you spend on, and how big is, the finished project?',
+    'How much time do you spend on, and how big is, a typical finished audio programming project?',
     'Some programmers work on projects for many months or even years. Others prefer to work on a project for just a matter of days or hours. The following statements are about how long a typical project takes before you consider it complete, and how large the codebase is when it is finished.',
     [
       'A typical project takes a significant amount of time to complete.',
@@ -35,7 +35,7 @@ export const likert = [
     ]
   ),
   likertScale(
-    'How much did the project change from beginning to end?',
+    'How much does a typical audio programming project change from beginning to end?',
     '',
     [
       'I consider a project finished when all my tests pass.',
