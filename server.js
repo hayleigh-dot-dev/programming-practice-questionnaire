@@ -78,5 +78,5 @@ app.post('/email', (request, response) => {
     body: json.email
   })
 
-  response.sendStatus(418)
+  response.sendStatus(200)
 })
