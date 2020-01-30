@@ -73,10 +73,14 @@ app.post('/complete', (request, response) => {
 app.post('/email', (request, response) => {
   const json = request.body
 
-  send({
-    subject: `New Questionnaire Email Response: ${json.userName} - ${json.userDate}`,
-    body: json.email
-  })
+  if (json.userName && json.userDate && json.userEmail) {
+    send({
+      subject: `New Questionnaire Email Response: ${json.userName} - ${json.userDate}`,
+      body: json.email
+    })
 
-  response.sendStatus(200)
+    response.sendStatus(200)
+  } else {
+    response.sendStatus(418)
+  }
 })
