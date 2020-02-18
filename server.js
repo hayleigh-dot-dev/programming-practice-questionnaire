@@ -23,7 +23,7 @@ app.listen(port, () => {
 
 // The incoming json is expected to have all these keys present to be considered
 // valid
-const keys = ['userConsent', 'userName', 'userDate', 'demographics', 'likertScales', 'qsort']
+const keys = ['userData', 'demographics', 'likertScales', 'qsort']
 // Takes the above keys and validates an object based on whether all these keys
 // are present. We *don't* validate the value of these keys, just their
 // existence.
