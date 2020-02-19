@@ -30,20 +30,42 @@ export const demographics = [
   singleResponse('How old are you?', [
     'Under 18',
     '18-24 years old',
-    '25-34 yearw old',
+    '25-34 years old',
     '45-54 years old',
     'Over 55'
   ]),
-  singleResponseWithOther('What is your highest level of education achieved', [
-    'Less than A-levels (UK) or a high school diploma (US)',
-    'A-levels (URK), high school diploma (US), or equivalent',
-    'Bachelor\'s Degree',
-    'Master\'s Degree',
-    'Doctorate'
+  singleResponse('What is the highest educational qualification you have attained?', [
+    'Did not complete any school qualification',
+    'Completed first school qualification at about 16 years (e.g.  GCSE/Junior High School)',
+    'Completed Second qualification (e.g A levels/ High School)',
+    'Undergraduate degree or professional qualification',
+    'Master\'s or taught postgraduate degree',
+    'Doctorate or reserach postgraduate degree'
+  ]),
+  singleResponse('If you are still in education, what is the highest qualification you expect to obtain?', [
+    'First school qualification (e.g.  GCSE / Junior High School)',
+    'Post-16 vocational course',
+    'Second school qualification (e.g.  A-levels / High School)',
+    'Undergraduate degree or professional qualification',
+    'Master\'s or taught postgraduate degree',
+    'Doctorate or reserach postgraduate degree',
+    'Not applicable'
   ]),
   multipleResponseWithOther('What was/is your primary field of study?', [
     'Computer Science, Software Engineering, or related field of study',
     'Music, Music Technology, or related field of study'
+  ]),
+  singleResponse('What is your current occupational status?', [
+    'Student',
+    'In full-time employment – audio software related',
+    'In full-time employment – not audio software related',
+    'In part-time employment – audio software related',
+    'In part-time employment – not audio software related',
+    'Self-employed – audio software related',
+    'Self-employed – not audio software related',
+    'Homemaker / full-time parent',
+    'Unemployed',
+    'Retired'
   ]),
   singleResponse('How many years experience do you have programming?', [
     'Less than 1 year',
