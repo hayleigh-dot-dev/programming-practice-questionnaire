@@ -4,12 +4,14 @@ module Main exposing
 
 {- Imports ------------------------------------------------------------------ -}
 import Browser
+import Browser.Dom
 import Browser.Navigation
 import Html
 import Http
 import Json.Decode
 import Json.Encode
 import Set
+import Task
 import Tuple.Extra
 import Url exposing (Url)
 
@@ -24,6 +26,8 @@ import Pages.Demographics
 import Pages.Likert
 import Pages.QSort
 import Pages.Submission
+
+import Ports.LocalStorage
 
 {- Main --------------------------------------------------------------------- -}
 main : Program Json.Decode.Value App Msg
@@ -91,8 +95,7 @@ init : Json.Decode.Value -> Url -> Browser.Navigation.Key -> (App, Cmd Msg)
 init flags url key =
   case Json.Decode.decodeValue flagsDecoder flags of
     Ok { demographics, likert, qsort } ->
-      Tuple.Extra.pairWith Cmd.none <|
-        ( updatePage url
+      ( ( Info
         , key
         , { errorMessage = Nothing
           , userConsent = Data.UserConsent.init
@@ -104,6 +107,17 @@ init flags url key =
           , qsort = qsort
           }
         )
+      , Ports.LocalStorage.sequence identity
+          |> Ports.LocalStorage.chain (Ports.LocalStorage.read "userData")
+          |> Ports.LocalStorage.chain (Ports.LocalStorage.expectJson "userData")
+          |> Ports.LocalStorage.chain (Ports.LocalStorage.read "demographics")
+          |> Ports.LocalStorage.chain (Ports.LocalStorage.expectJson "demographics")
+          |> Ports.LocalStorage.chain (Ports.LocalStorage.read "likert")
+          |> Ports.LocalStorage.chain (Ports.LocalStorage.expectJson "likertScales")
+          |> Ports.LocalStorage.chain (Ports.LocalStorage.read "qsort")
+          |> Ports.LocalStorage.chain (Ports.LocalStorage.expectJson "qsort")
+          |> Ports.LocalStorage.commit
+      )
 
     Err e ->
       Tuple.Extra.pairWith Cmd.none <|
@@ -120,12 +134,18 @@ init flags url key =
           }
         )
 
+encodeUserData : Model -> Json.Encode.Value
+encodeUserData { userName, userDate, userConsent } =
+  Json.Encode.object
+    [ ("name", Json.Encode.string userName)
+    , ("date", Json.Encode.string userDate)
+    , ("consent", Data.UserConsent.encode userConsent)
+    ]
+
 encode : Model -> Json.Encode.Value
 encode model =
   Json.Encode.object
-    [ ("userConsent", Data.UserConsent.encode model.userConsent)
-    , ("userName", Json.Encode.string model.userName)
-    , ("userDate", Json.Encode.string model.userDate)
+    [ ("userData", encodeUserData model)
     , ("demographics", Json.Encode.list Data.MultipleChoice.encode model.demographics)
     , ("likertScales", Json.Encode.list Data.Likert.encode model.likertScales)
     , ("qsort", Data.QSort.encode model.qsort)
@@ -134,18 +154,23 @@ encode model =
 encodePartial : Model -> Json.Encode.Value
 encodePartial model =
   Json.Encode.object
-    [ ("userConsent", Data.UserConsent.encode model.userConsent)
-    , ("userName", Json.Encode.string model.userName)
-    , ("userDate", Json.Encode.string model.userDate)
+    [ ("userData", encodeUserData model)
     , ("demographics", Json.Encode.list Data.MultipleChoice.encode model.demographics)
     , ("likertScales", Json.Encode.list Data.Likert.encode model.likertScales)
     ]
 
+
 {- Update ------------------------------------------------------------------- -}
 type Msg
-  = UrlChanged Url
+  = None
+  | UrlChanged Url
   | InternalUrlRequested Url
   | ExternalUrlRequested String
+  -- Localstorage
+  | GotUserConsent { name : String, date : String, consent : UserConsent }
+  | GotDemographics (List MultipleChoice)
+  | GotLikerts (List LikertScale)
+  | GotQSort QSort
   -- Consent Form
   | UserConsentChanged Data.UserConsent.Field
   | UserNameChanged String
@@ -169,24 +194,33 @@ type Msg
 update : Msg -> App -> (App, Cmd Msg)
 update msg (page, key, model) =
   case msg of
+    None ->
+      Tuple.pair (page, key, model) Cmd.none
+
     UrlChanged ({ path } as url) ->
       case path of
-        "/3" ->
-          Tuple.pair (updatePage url, key, model) <| Http.post
-            { url = "https://qmul-questionnaire.herokuapp.com/partial"
-            , body = Http.jsonBody <| encodePartial model
-            , expect = Http.expectWhatever GotSubmissionResponse
-            }
+        "/programming-practice-questionnaire/3" ->
+          Tuple.pair (updatePage url, key, model) <| Cmd.batch
+            [ Http.post
+                { url = "https://qmul-questionnaire.herokuapp.com/partial"
+                , body = Http.jsonBody <| encodePartial model
+                , expect = Http.expectWhatever GotSubmissionResponse
+                }
+            , Task.perform (\_ -> None) (Browser.Dom.setViewport 0 0)
+            ]
 
-        "/success" ->
-          Tuple.pair (updatePage url, key, model) <| Http.post
-            { url = "https://qmul-questionnaire.herokuapp.com/complete"
-            , body = Http.jsonBody <| encode model
-            , expect = Http.expectWhatever GotSubmissionResponse
-            }
+        "/programming-practice-questionnaire/success" ->
+          Tuple.pair (updatePage url, key, model) <| Cmd.batch
+            [ Http.post
+                { url = "https://qmul-questionnaire.herokuapp.com/complete"
+                , body = Http.jsonBody <| encode model
+                , expect = Http.expectWhatever GotSubmissionResponse
+                }
+            , Task.perform (\_ -> None) (Browser.Dom.setViewport 0 0)
+            ]
 
         _ ->
-          Tuple.Extra.pairWith Cmd.none <|
+          Tuple.Extra.pairWith (Task.perform (\_ -> None) (Browser.Dom.setViewport 0 0)) <|
             ( updatePage url
             , key
             , model
@@ -206,82 +240,140 @@ update msg (page, key, model) =
         , model
         )
 
-    UserConsentChanged field ->
-      Tuple.Extra.pairWith Cmd.none <|
+    GotUserConsent { name, date, consent } ->
+      Tuple.Extra.pairWith (Browser.Navigation.pushUrl key "/programming-practice-questionnaire/1") <|
         ( page
         , key
-        , { model | userConsent = Data.UserConsent.update field model.userConsent }
+        , { model | userName = name, userDate = date, userConsent = consent }
         )
+
+    GotDemographics demographics ->
+      Tuple.Extra.pairWith (Browser.Navigation.pushUrl key "/programming-practice-questionnaire/1") <|
+        ( page
+        , key
+        , { model | demographics = demographics }
+        )
+
+    GotLikerts likertScales ->
+      Tuple.Extra.pairWith (Browser.Navigation.pushUrl key "/programming-practice-questionnaire/2") <|
+        ( page
+        , key
+        , { model | likertScales = likertScales }
+        )
+
+    GotQSort qsort ->
+      Tuple.Extra.pairWith (Browser.Navigation.pushUrl key "/programming-practice-questionnaire/3") <|
+        ( page
+        , key
+        , {model | qsort = qsort }
+        )
+
+
+    UserConsentChanged field ->
+      let 
+        m = { model | userConsent = Data.UserConsent.update field model.userConsent }
+      in
+      Tuple.pair (page, key, m)
+        <| Ports.LocalStorage.commitAction identity
+        <| Ports.LocalStorage.write "userData"
+        <| encodeUserData m
 
     UserNameChanged name ->
-      Tuple.Extra.pairWith Cmd.none <|
-        ( page
-        , key
-        , { model | userName = name }
-        )
+      let
+        m = { model | userName = name }
+      in 
+      Tuple.pair (page, key, m)
+        <| Ports.LocalStorage.commitAction identity
+        <| Ports.LocalStorage.write "userData"
+        <| encodeUserData m
 
     UserDateChanged date ->
-      Tuple.Extra.pairWith Cmd.none <|
-        ( page
-        , key
-        , { model | userDate = date }
-        )
+      let
+        m = { model | userDate = date }
+      in
+      Tuple.pair (page, key, m)
+        <| Ports.LocalStorage.commitAction identity
+        <| Ports.LocalStorage.write "userData"
+        <| encodeUserData m
 
     OptionSelected i option ->
-      Tuple.Extra.pairWith Cmd.none <|
-        ( page
-        , key
-        , model |> updateMultipleChoice (Data.MultipleChoice.select option) i
-        )
+      let
+        m = updateMultipleChoice (Data.MultipleChoice.select option) i model
+      in
+      Tuple.pair (page, key, m)
+        <| Ports.LocalStorage.commitAction identity
+        <| Ports.LocalStorage.write "demographics"
+        <| Json.Encode.list Data.MultipleChoice.encode m.demographics
 
     OptionAdded i option ->
-      Tuple.Extra.pairWith Cmd.none <|
-        ( page
-        , key
-        , model |> updateMultipleChoice (Data.MultipleChoice.add option) i
-        )
+      let
+        m = updateMultipleChoice (Data.MultipleChoice.add option) i model
+      in
+      Tuple.pair (page, key, m)
+        <| Ports.LocalStorage.commitAction identity
+        <| Ports.LocalStorage.write "demographics"
+        <| Json.Encode.list Data.MultipleChoice.encode m.demographics
 
     ItemChecked i statement rating ->
-      Tuple.Extra.pairWith Cmd.none <|
-        ( page
-        , key
-        , model |> updateLikertScale (Data.Likert.rate statement rating) i 
-        )
+      let
+        m = updateLikertScale (Data.Likert.rate statement rating) i model
+      in
+      Tuple.pair (page, key, m)
+        <| Ports.LocalStorage.commitAction identity
+        <| Ports.LocalStorage.write "likert"
+        <| Json.Encode.list Data.Likert.encode m.likertScales
 
     ItemSelected statement ->
-      Tuple.Extra.pairWith Cmd.none <|
-        ( page
-        , key
-        , { model | qsort = Data.QSort.select statement model.qsort }
-        )
-  
+      let
+        m = { model | qsort = Data.QSort.select statement model.qsort }
+      in
+      Tuple.pair (page, key, m)
+        <| Ports.LocalStorage.commitAction identity
+        <| Ports.LocalStorage.write "qsort"
+        <| Data.QSort.encode model.qsort
+
     ItemRated rating ->
-      Tuple.Extra.pairWith Cmd.none <|
-        ( page
-        , key
-        , { model | qsort = Data.QSort.rate rating model.qsort }
-        )
-  
+      let
+        m = { model | qsort = Data.QSort.rate rating model.qsort }
+      in
+      Tuple.pair (page, key, m)
+        <| Ports.LocalStorage.commitAction identity
+        <| Ports.LocalStorage.write "qsort"
+        <| Data.QSort.encode model.qsort
+
     ItemSorted position ->
-      Tuple.Extra.pairWith Cmd.none <|
-        ( page
-        , key
-        , { model | qsort = Data.QSort.sort position model.qsort }
-        )
+      let
+        m = { model | qsort = Data.QSort.sort position model.qsort }
+      in
+      Tuple.pair (page, key, m)
+        <| Ports.LocalStorage.commitAction identity
+        <| Ports.LocalStorage.write "qsort"
+        <| Data.QSort.encode model.qsort
 
     StepForward ->
-      Tuple.Extra.pairWith Cmd.none <|
-        ( page
-        , key
-        , { model | qsort = Data.QSort.stepForward model.qsort }
-        )
+      let
+        m = { model | qsort = Data.QSort.stepForward model.qsort }
+      in
+      Tuple.pair (page, key, m) <| Cmd.batch
+        [ Ports.LocalStorage.commitAction identity
+          <| Ports.LocalStorage.write "qsort"
+          <| Data.QSort.encode model.qsort
+        , Task.perform (\_ -> None)
+          <| Browser.Dom.setViewport 0 0
+        ]
 
     StepBackward ->
-      Tuple.Extra.pairWith Cmd.none <|
-        ( page
-        , key
-        , { model | qsort = Data.QSort.stepBackward model.qsort }
-        )
+      let
+        m = { model | qsort = Data.QSort.stepBackward model.qsort }
+      in
+      Tuple.pair (page, key, m) <| Cmd.batch
+        [ Ports.LocalStorage.commitAction identity
+          <| Ports.LocalStorage.write "qsort"
+          <| Data.QSort.encode model.qsort
+        , Task.perform (\_ -> None)
+          <| Browser.Dom.setViewport 0 0
+        ]
+
 
     EmailUpdated email ->
       Tuple.Extra.pairWith Cmd.none <|
@@ -311,25 +403,25 @@ update msg (page, key, model) =
 
 updatePage : Url -> Page
 updatePage { path } =
-  case String.replace "/programming-practice-questionnaire/" "/" path of
-    "/"         -> Info
-    "/info"     -> Info
-    "/consent"  -> Consent
-    "/1"        -> Demographics
-    "/2"        -> Likert
-    "/3"        -> QSort
-    "/success"  -> Submission
-    _           -> Error
+  case path of
+    "/programming-practice-questionnaire/"        -> Info
+    "/programming-practice-questionnaire/info"    -> Info
+    "/programming-practice-questionnaire/consent" -> Consent
+    "/programming-practice-questionnaire/1"       -> Demographics
+    "/programming-practice-questionnaire/2"       -> Likert
+    "/programming-practice-questionnaire/3"       -> QSort
+    "/programming-practice-questionnaire/success" -> Submission
+    _                                             -> Error
 
 updateMultipleChoice : (MultipleChoice -> MultipleChoice) -> Int -> Model -> Model
 updateMultipleChoice updateF j model =
-  model.demographics 
+  model.demographics
     |> List.indexedMap (\i mc -> if i == j then updateF mc else mc)
     |> (\demographics -> { model | demographics = demographics })
 
 updateLikertScale : (LikertScale -> LikertScale) -> Int -> Model -> Model
 updateLikertScale updateF j model =
-  model.likertScales 
+  model.likertScales
     |> List.indexedMap (\i scale -> if i == j then updateF scale else scale)
     |> (\likertScales -> { model | likertScales = likertScales })
 
@@ -343,13 +435,13 @@ view (page, _, model) =
   case page of
     Info ->
       { title = title "Info"
-      , body = 
+      , body =
           Pages.Info.view
       }
 
     Consent ->
       { title = title "Consent"
-      , body = 
+      , body =
           Pages.Consent.view model
             { userConsentChanged = UserConsentChanged
             , userNameChanged = UserNameChanged
@@ -359,7 +451,7 @@ view (page, _, model) =
 
     Demographics ->
       { title = title "Demographics"
-      , body = 
+      , body =
           Pages.Demographics.view model
             { optionSelected = OptionSelected
             , optionAdded = OptionAdded
@@ -368,7 +460,7 @@ view (page, _, model) =
 
     Likert ->
       { title = title "Likert Scales"
-      , body = 
+      , body =
           Pages.Likert.view model
             { itemChecked = ItemChecked
             }
@@ -376,7 +468,7 @@ view (page, _, model) =
 
     QSort ->
       { title = title "QSort Exercise"
-      , body = 
+      , body =
           Pages.QSort.view model
             { itemSelected = ItemSelected
             , itemRated = ItemRated
@@ -404,4 +496,39 @@ view (page, _, model) =
 {- Subscriptions ------------------------------------------------------------ -}
 subscriptions : App -> Sub Msg
 subscriptions _ =
-  Sub.none
+  let
+    userDataDecoder =
+      Json.Decode.map3 (\name date consent -> { name = name, date = date, consent = consent })
+        (Json.Decode.field "name" Json.Decode.string)
+        (Json.Decode.field "date" Json.Decode.string)
+        (Json.Decode.field "consent" Data.UserConsent.decoder)
+  in
+  Sub.batch
+      [ Ports.LocalStorage.onResponse identity (\response ->
+          case Debug.log "hello" response of
+            Ports.LocalStorage.GotJson "userData" json ->
+              Json.Decode.decodeValue userDataDecoder json
+                |> Debug.log "hello"
+                |> Result.map GotUserConsent
+                |> Result.withDefault None
+
+            Ports.LocalStorage.GotJson "demographics" json ->
+              Json.Decode.decodeValue (Json.Decode.list Data.MultipleChoice.decoder) json
+                |> Result.map GotDemographics
+                |> Result.withDefault None
+
+            Ports.LocalStorage.GotJson "likertScales" json ->
+              Json.Decode.decodeValue (Json.Decode.list Data.Likert.decoder) json
+                |> Result.map GotLikerts
+                |> Result.withDefault None
+
+            Ports.LocalStorage.GotJson "qsort" json ->
+              Json.Decode.decodeValue Data.QSort.decoder json
+                |> Result.map GotQSort
+                |> Debug.log "hello"
+                |> Result.withDefault None
+
+            _ ->
+              None
+        )
+      ]
