@@ -4,13 +4,14 @@ module Data.UserConsent exposing
   , update
   , hasUserConsent
   , toHtml
-  , encode
+  , encode, decoder
   )
 
 {- Imports ------------------------------------------------------------------ -}
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
+import Json.Decode
 import Json.Encode
 
 {- Types -------------------------------------------------------------------- -}
@@ -135,8 +136,23 @@ toHtml handler { explained, withdrawal, understand, personalData } =
 encode : UserConsent -> Json.Encode.Value
 encode { explained, withdrawal, understand, personalData } =
   Json.Encode.object
-    [ ("explained", Json.Encode.bool explained )
+    [ ("type", Json.Encode.string "UserConsent")
+    , ("explained", Json.Encode.bool explained )
     , ("withdrawal", Json.Encode.bool withdrawal )
     , ("understand", Json.Encode.bool understand )
     , ("personalData", Json.Encode.bool personalData )
     ]
+
+decoder : Json.Decode.Decoder UserConsent
+decoder =
+  Json.Decode.field "type" Json.Decode.string |> Json.Decode.andThen (\t ->
+    if t == "UserConsent" then
+      Json.Decode.map4 UserConsent
+        (Json.Decode.field "explained" Json.Decode.bool)
+        (Json.Decode.field "withdrawal" Json.Decode.bool)
+        (Json.Decode.field "understand" Json.Decode.bool)
+        (Json.Decode.field "personalData" Json.Decode.bool)
+    else
+      Json.Decode.fail
+        <| "Expected type to be UserConsent but got " ++ t
+  )
