@@ -505,10 +505,9 @@ subscriptions _ =
   in
   Sub.batch
       [ Ports.LocalStorage.onResponse identity (\response ->
-          case Debug.log "hello" response of
+          case response of
             Ports.LocalStorage.GotJson "userData" json ->
               Json.Decode.decodeValue userDataDecoder json
-                |> Debug.log "hello"
                 |> Result.map GotUserConsent
                 |> Result.withDefault None
 
@@ -525,7 +524,6 @@ subscriptions _ =
             Ports.LocalStorage.GotJson "qsort" json ->
               Json.Decode.decodeValue Data.QSort.decoder json
                 |> Result.map GotQSort
-                |> Debug.log "hello"
                 |> Result.withDefault None
 
             _ ->
