@@ -10,7 +10,7 @@ import Html.Attributes
 view : List (Html msg)
 view =
   [ Html.main_
-    [ Html.Attributes.class "py-2 container md:mx-auto px-4" ]
+    [ Html.Attributes.class "py-2 container md:mx-auto px-4 pt-8" ]
     [ Html.h1 
       [ Html.Attributes.class "text-2xl mb-2" ]
       [ Html.text "Information Sheet" ]
@@ -149,14 +149,14 @@ view =
       ]
     ]
   , Html.footer
-    [ Html.Attributes.class "flex mt-4 py-2 container md:mx-auto px-4" ]
+    [ Html.Attributes.class "flex mt-4 py-2 container md:mx-auto px-4 pb-8" ]
     [ Html.span
       [ Html.Attributes.class "flex-1 mr-10" ] []
     , Html.a
       [ Html.Attributes.class 
           <| "flex-1 ml-10 bg-blue-500 hover:bg-blue-700 text-white font-bold "
           ++ "py-2 px-4 rounded"
-      , Html.Attributes.href "/consent" 
+      , Html.Attributes.href "/programming-practice-questionnaire/consent" 
       ]
       [ Html.text "next" ]
     ]
