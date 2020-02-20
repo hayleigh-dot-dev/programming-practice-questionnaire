@@ -38,7 +38,7 @@ app.post('/partial', (request, response) => {
     const body = JSON.stringify(json, null, 2)
 
     send({
-      subject: `New Questionnaire Partial Response: ${json.userName} – ${json.userDate}`,
+      subject: `New Questionnaire Partial Response: ${json.userData.name} – ${json.userData.date}`,
       text: body
     })
 
@@ -58,7 +58,7 @@ app.post('/complete', (request, response) => {
     const body = JSON.stringify(json, null, 2)
 
     send({
-      subject: `New Questionnaire Response: ${json.userName} – ${json.userDate}`,
+      subject: `New Questionnaire Response: ${json.userData.name} – ${json.userData.date}`,
       text: body
     })
 
