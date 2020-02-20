@@ -257,11 +257,21 @@ viewBasicSort events { title, description, statements, unsorted, selected } =
         , Html.p
           [ A.class "mb-2" ]
           [ Html.text
-              <| "Consider how this feature does, or might, impact your programming "
-              ++ "practice. Then select one of the buttons below to rate that "
-              ++ "feature as Negative, Neutral, or Positive. Once all statements "
-              ++ "have been rated, click 'Next Step' to move to the second part "
-              ++ "of the exercise."
+              <| "The language features you'll be presented with come from a variety "
+              ++ "of different languages and paradigms, and examples have been chosen "
+              ++ "to exemplify how and where they're most typically used. Try not "
+              ++ "to focus too much on the syntax of a particular example (unless "
+              ++ "the syntax is the main focus of that example) and instead try "
+              ++ "to imagine that feature's impact regardless of whether your preferred "
+              ++ "language does or can support it."
+          ]
+        , Html.p
+          [ A.class "mb-2" ]
+          [ Html.text
+              <| "We estimate this task will take around 30 minutes, dependent on "
+              ++ "your familiarity with each of the features presented. Don't forget "
+              ++ "you are free to leave this questionnaire and return at a later "
+              ++ "time, your progress is saved."
           ]
         , Html.p
           [ A.class "mb-2" ]
