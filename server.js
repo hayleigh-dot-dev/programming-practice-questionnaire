@@ -76,7 +76,7 @@ app.post('/email', (request, response) => {
   if (json.userName && json.userDate && json.userEmail) {
     send({
       subject: `New Questionnaire Email Response: ${json.userName} - ${json.userDate}`,
-      body: json.email
+      body: json.userEmail
     })
 
     response.sendStatus(200)
