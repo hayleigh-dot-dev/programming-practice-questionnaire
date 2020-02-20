@@ -389,6 +389,25 @@ viewNormalSort events { title, description, statements, unsorted, selected, shap
               ++ "than another, the scale is relative. This means a feature rated "
               ++ "at -5 isn't necessarily as impactful as a feature rated at 5."
           ]
+        , Html.p
+          [ A.class "mb-2" ]
+          [ Html.text
+              <| "The language features you'll be presented with come from a variety "
+              ++ "of different languages and paradigms, and examples have been chosen "
+              ++ "to exemplify how and where they're most typically used. Try not "
+              ++ "to focus too much on the syntax of a particular example (unless "
+              ++ "the syntax is the main focus of that example) and instead try "
+              ++ "to imagine that feature's impact regardless of whether your preferred "
+              ++ "language does or can support it."
+          ]
+        , Html.p
+          [ A.class "mb-2" ]
+          [ Html.text
+              <| "We estimate this task will take around 30 minutes, dependent on "
+              ++ "your familiarity with each of the features presented. Don't forget "
+              ++ "you are free to leave this questionnaire and return at a later "
+              ++ "time, your progress is saved."
+          ]
         , Html.hr [ A.class "border border-black mb-4" ] []
         ]
 

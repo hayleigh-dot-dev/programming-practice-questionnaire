@@ -98,13 +98,19 @@ view =
         [ Html.Attributes.class "mb-2" ]
         [ Html.text
             <| "In this study you'll be asked to complete a questionnaire. It is "
-            ++ "expected to take around 30 minutes. In it, you'll be asked "
+            ++ "expected to take around 45 minutes. In it, you'll be asked "
             ++ "some demographic questions such as your educational background "
             ++ "and experience programming. Then you will rate your level of "
             ++ "agreement with a collection of statements about your programming "
             ++ "practice. Finally, you'll be asked to sort a number of programming "
             ++ "language features according to how much they might impact your "
             ++ "programming practice."
+        ]
+      , Html.p
+        [ Html.Attributes.class "mb-2" ]
+        [ Html.text
+            <| "You may close this survey and come back to it at any time, your "
+            ++ "progress is saved automatically."
         ]
       ]
     , Html.hr
