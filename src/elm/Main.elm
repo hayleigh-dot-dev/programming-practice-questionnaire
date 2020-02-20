@@ -389,7 +389,7 @@ update msg (page, key, model) =
             Json.Encode.object
               [ ("userName", Json.Encode.string model.userName)
               , ("userDate", Json.Encode.string model.userDate)
-              , ("email", Json.Encode.string model.userEmail)
+              , ("userEmail", Json.Encode.string model.userEmail)
               ]
         , expect = Http.expectWhatever GotSubmissionResponse
         }
