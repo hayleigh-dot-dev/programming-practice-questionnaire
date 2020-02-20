@@ -273,12 +273,6 @@ viewBasicSort events { title, description, statements, unsorted, selected } =
               ++ "you are free to leave this questionnaire and return at a later "
               ++ "time, your progress is saved."
           ]
-        , Html.p
-          [ A.class "mb-2" ]
-          [ Html.text
-              <| "There are 36 statements in total and the exercise should take "
-              ++ "about 15 to 20 minutes."
-          ]
         , Html.hr [ A.class "border border-black mb-4" ] []
         ]
 
