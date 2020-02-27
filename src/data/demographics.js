@@ -31,6 +31,7 @@ export const demographics = [
     'Under 18',
     '18-24 years old',
     '25-34 years old',
+    '35-44 years old',
     '45-54 years old',
     'Over 55'
   ]),
