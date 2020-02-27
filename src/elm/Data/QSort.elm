@@ -3,6 +3,7 @@ module Data.QSort exposing
   , Statement, Rating
   , select, rate, sort
   , stepForward, stepBackward
+  , isComplete
   , toHtml
   , encode, decoder
   )
@@ -218,6 +219,17 @@ stepBackward qsort =
         , unsorted = unsorted ++ List.filterMap identity statements
         , selected = Nothing
         }
+
+--
+isComplete : QSort -> Bool
+isComplete qsort =
+  case qsort of
+    Basic _ ->
+      False
+
+    Normal { unsorted } ->
+      List.length unsorted == 0
+
 
 -- View ------------------------------------------------------------------------
 --

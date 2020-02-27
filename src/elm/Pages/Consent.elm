@@ -122,7 +122,7 @@ view model { userConsentChanged, userNameChanged, userDateChanged } =
         ]
         [ Html.text "next" ]
       else
-      Html.a
+      Html.button
         [ Html.Attributes.class 
             <| "flex-1 ml-10 bg-blue-500 text-white font-bold py-2 px-4 rounded "
             ++ "opacity-50 cursor-not-allowed"

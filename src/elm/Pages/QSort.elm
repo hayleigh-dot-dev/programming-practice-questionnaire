@@ -45,12 +45,20 @@ view model { itemSelected, itemRated, itemSorted, stepForward, stepBackward } =
       , Html.Attributes.href "/programming-practice-questionnaire/2" 
       ]
       [ Html.text "back" ]
-    , Html.a
-      [ Html.Attributes.class 
-          <| "flex-1 ml-10 bg-blue-500 hover:bg-blue-700 text-white font-bold "
-          ++ "py-2 px-4 rounded"
-      , Html.Attributes.href "/programming-practice-questionnaire/success"
-      ]
-      [ Html.text "submit" ]
+    , if Data.QSort.isComplete model.qsort then
+        Html.a
+          [ Html.Attributes.class 
+              <| "flex-1 ml-10 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 "
+              ++ "px-4 rounded"
+          , Html.Attributes.href "/programming-practice-questionnaire/success"
+          ]
+          [ Html.text "submit" ]
+      else
+        Html.button
+          [ Html.Attributes.class 
+              <| "flex-1 ml-10 bg-blue-500 text-white font-bold py-2 px-4 rounded "
+              ++ "opacity-50 cursor-not-allowed"
+          ]
+          [ Html.text "submit" ]
     ]
   ]
