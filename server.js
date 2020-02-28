@@ -34,6 +34,11 @@ const validate = (obj, keys) => Object
 app.post('/partial', (request, response) => {
   const json = request.body
   const isValid = validate(json, keys.filter(k => k !== 'qsort'))
+
+  console.log(`
+    ${Date.now()} – ${json}
+  `)
+
   if (isValid) {
     const body = JSON.stringify(json, null, 2)
 
@@ -54,6 +59,10 @@ app.post('/complete', (request, response) => {
   const json = request.body
   const isValid = validate(json, keys)
 
+  console.log(`
+    ${Date.now()} – ${json}
+  `)
+
   if (isValid) {
     const body = JSON.stringify(json, null, 2)
 
@@ -72,11 +81,18 @@ app.post('/complete', (request, response) => {
 
 app.post('/email', (request, response) => {
   const json = request.body
+  const { userName, userDate, userEmail } = json
 
-  if (json.userName && json.userDate && json.userEmail) {
+  console.log(`
+    ${Date.now()} – ${json}
+  `)
+
+  if (userName && userDate && userEmail) {
+    const body = JSON.stringify(json, null, 2)
+
     send({
-      subject: `New Questionnaire Email Response: ${json.userName} - ${json.userDate}`,
-      body: json.userEmail
+      subject: `New Questionnaire Email Response: ${userName} - ${userDate}`,
+      text: body
     })
 
     response.sendStatus(200)
