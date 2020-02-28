@@ -13,10 +13,15 @@ type alias Events msg =
   , submit : msg
   }
 
+type alias Data model =
+  { model
+  | emailSubmitted : Bool
+  }
+
 
 {- View --------------------------------------------------------------------- -}
-view : Events msg -> List (Html msg)
-view { update, submit } =
+view : Data model -> Events msg -> List (Html msg)
+view data { update, submit } =
   [ Html.main_
     [ Html.Attributes.class "h-screen py-2 container md:mx-auto px-4 flex flex-col align-center items-center justify-center" ]
     [ Html.h1 
@@ -47,6 +52,12 @@ view { update, submit } =
         , Html.Events.onClick submit ]
         [ Html.text "Submit" ]
       ]
+    , if data.emailSubmitted then
+        Html.p
+          [ Html.Attributes.class "text-green-500 text-lg" ]
+          [ Html.text "Thank you for registering your interest!" ]
+      else
+        Html.text ""
     ]
   ]
 

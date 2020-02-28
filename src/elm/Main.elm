@@ -64,6 +64,7 @@ type alias Model =
   , userName : String
   , userDate : String
   , userEmail : String
+  , emailSubmitted : Bool
   , demographics : List MultipleChoice
   , likertScales : List LikertScale
   , qsort : QSort
@@ -92,7 +93,7 @@ flagsDecoder =
     (Json.Decode.field "qsort" Data.QSort.decoder)
 
 init : Json.Decode.Value -> Url -> Browser.Navigation.Key -> (App, Cmd Msg)
-init flags url key =
+init flags _ key =
   case Json.Decode.decodeValue flagsDecoder flags of
     Ok { demographics, likert, qsort } ->
       ( ( Info
@@ -102,6 +103,7 @@ init flags url key =
           , userName = ""
           , userDate = ""
           , userEmail = ""
+          , emailSubmitted = False
           , demographics = demographics
           , likertScales = likert
           , qsort = qsort
@@ -128,6 +130,7 @@ init flags url key =
           , userName = ""
           , userDate = ""
           , userEmail = ""
+          , emailSubmitted = False
           , demographics = []
           , likertScales = []
           , qsort = Data.QSort.init "" "" Set.empty
@@ -383,7 +386,10 @@ update msg (page, key, model) =
         )
 
     SubmitEmail ->
-      Tuple.pair (page, key, model) <| Http.post
+      let
+        m = { model | emailSubmitted = True }
+      in
+      Tuple.pair (page, key, m) <| Http.post
         { url = "https://qmul-questionnaire.herokuapp.com/email"
         , body = Http.jsonBody <|
             Json.Encode.object
@@ -481,7 +487,7 @@ view (page, _, model) =
     Submission ->
       { title = title "Success"
       , body =
-          Pages.Submission.view
+          Pages.Submission.view model
             { update = EmailUpdated
             , submit = SubmitEmail
             }
