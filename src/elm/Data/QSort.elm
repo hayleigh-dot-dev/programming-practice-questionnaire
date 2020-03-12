@@ -653,14 +653,29 @@ decoder =
       , selected = Nothing
       }
 
-    normalData title description statements unsorted length shape =
+    nearestSquare n =
+      Basics.toFloat n
+        |> Basics.sqrt
+        |> Basics.round
+        |> \x -> x ^ 2
+
+    squareRoot n =
+      Basics.toFloat n
+       |> Basics.sqrt
+       |> Basics.round
+
+    normalData title description statements unsorted length =
       { title = title
       , description = description
       , statements = statements
       , unsorted = unsorted
       , selected = Nothing
       , length = length
-      , shape = shape
+      , shape = 
+          List.length statements 
+            |> nearestSquare 
+            |> squareRoot
+            |> (\root -> List.range 1 root ++ (List.reverse <| List.range 1 <| root - 1))
       }
 
     statementDecoder =
@@ -690,13 +705,13 @@ decoder =
           (Decode.field "unsorted" <| Decode.list statementDecoder)
 
       "Normal" ->
-        Decode.map Normal <| Decode.map6 normalData
+        Decode.map Normal <| Decode.map5 normalData
           (Decode.field "title" Decode.string)
           (Decode.field "description" Decode.string)
           (Decode.field "statements" <| Decode.list (Decode.nullable statementDecoder))
           (Decode.field "unsorted" <| Decode.list statementDecoder)
           (Decode.field "length" Decode.int)
-          (Decode.field "shape" <| Decode.list Decode.int)
+          -- (Decode.field "shape" <| Decode.list Decode.int)
 
       _ ->
         Decode.fail t
