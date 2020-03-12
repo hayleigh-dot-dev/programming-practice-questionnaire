@@ -54,7 +54,8 @@ export const demographics = [
   ]),
   multipleResponseWithOther('What was/is your primary field of study?', [
     'Computer Science, Software Engineering, or related field of study',
-    'Music, Music Technology, or related field of study'
+    'Music, Music Technology, or related field of study',
+    'Not applicable'
   ]),
   singleResponse('What is your current occupational status?', [
     'Student',
