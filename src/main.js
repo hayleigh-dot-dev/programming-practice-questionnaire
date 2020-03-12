@@ -1,16 +1,35 @@
-import { Elm } from './elm/Main.elm'
+import Main from './elm/Main.elm'
+import Results from './elm/Results.elm'
 
 import demographics from './data/demographics'
 import likert from './data/likert'
 import qsort from './data/qsort'
 
+import complete from './responses/complete/*.json'
+import partial from './responses/partial/*.json'
+
 // t test non parametric
+const Elm = {
+  Main: Main.Elm.Main,
+  Results: Results.Elm.Results
+}
 
-const app = Elm.Main.init({
-  flags: { demographics, likert, qsort }
-})
+console.log(window.location.hash)
+console.log(Object.values(partial))
 
-app.ports.elmToLocalStorage.subscribe(
+const app = window.location.hash === '#results'
+  ? Elm.Results.init({
+    flags: {
+      partial: Object.values(partial),
+      complete: Object.values(complete)
+    }
+  })
+  : Elm.Main.init({
+    flags: { demographics, likert, qsort }
+  })
+
+// LocalStorage port -----------------------------------------------------------
+app.ports && app.ports.elmToLocalStorage && app.ports.elmToLocalStorage.subscribe(
   function handleMsg (actions, responses = []) {
     actions.forEach(action => {
       console.log(action)
