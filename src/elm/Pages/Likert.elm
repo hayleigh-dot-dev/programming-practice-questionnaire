@@ -48,14 +48,14 @@ view model { itemChecked } =
           <| "flex-1 mr-10 bg-transparent hover:bg-blue-500 text-blue-700 "
           ++ "font-semibold hover:text-white py-2 px-4 border border-blue-500 "
           ++ "hover:border-transparent rounded"
-      , Html.Attributes.href "/programming-practice-questionnaire/1" 
+      , Html.Attributes.href "#1" 
       ]
       [ Html.text "back" ]
     , Html.a
       [ Html.Attributes.class 
           <| "flex-1 ml-10 bg-blue-500 hover:bg-blue-700 text-white font-bold "
           ++ "py-2 px-4 rounded"
-      , Html.Attributes.href "/programming-practice-questionnaire/3" 
+      , Html.Attributes.href "#3" 
       ]
       [ Html.text "next" ]
     ]

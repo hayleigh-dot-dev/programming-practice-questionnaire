@@ -200,9 +200,9 @@ update msg (page, key, model) =
     None ->
       Tuple.pair (page, key, model) Cmd.none
 
-    UrlChanged ({ path } as url) ->
-      case path of
-        "/programming-practice-questionnaire/3" ->
+    UrlChanged ({ fragment } as url) ->
+      case fragment of
+        Just "3" ->
           Tuple.pair (updatePage url, key, model) <| Cmd.batch
             [ Http.post
                 { url = "https://qmul-questionnaire.herokuapp.com/partial"
@@ -212,7 +212,7 @@ update msg (page, key, model) =
             , Task.perform (\_ -> None) (Browser.Dom.setViewport 0 0)
             ]
 
-        "/programming-practice-questionnaire/success" ->
+        Just "success" ->
           Tuple.pair (updatePage url, key, model) <| Cmd.batch
             [ Http.post
                 { url = "https://qmul-questionnaire.herokuapp.com/complete"
@@ -244,28 +244,28 @@ update msg (page, key, model) =
         )
 
     GotUserConsent { name, date, consent } ->
-      Tuple.Extra.pairWith (Browser.Navigation.pushUrl key "/programming-practice-questionnaire/1") <|
+      Tuple.Extra.pairWith (Browser.Navigation.pushUrl key "#1") <|
         ( page
         , key
         , { model | userName = name, userDate = date, userConsent = consent }
         )
 
     GotDemographics demographics ->
-      Tuple.Extra.pairWith (Browser.Navigation.pushUrl key "/programming-practice-questionnaire/1") <|
+      Tuple.Extra.pairWith (Browser.Navigation.pushUrl key "#1") <|
         ( page
         , key
         , { model | demographics = demographics }
         )
 
     GotLikerts likertScales ->
-      Tuple.Extra.pairWith (Browser.Navigation.pushUrl key "/programming-practice-questionnaire/2") <|
+      Tuple.Extra.pairWith (Browser.Navigation.pushUrl key "#2") <|
         ( page
         , key
         , { model | likertScales = likertScales }
         )
 
     GotQSort qsort ->
-      Tuple.Extra.pairWith (Browser.Navigation.pushUrl key "/programming-practice-questionnaire/3") <|
+      Tuple.Extra.pairWith (Browser.Navigation.pushUrl key "#3") <|
         ( page
         , key
         , {model | qsort = qsort }
@@ -408,16 +408,16 @@ update msg (page, key, model) =
         )
 
 updatePage : Url -> Page
-updatePage { path } =
-  case path of
-    "/programming-practice-questionnaire/"        -> Info
-    "/programming-practice-questionnaire/info"    -> Info
-    "/programming-practice-questionnaire/consent" -> Consent
-    "/programming-practice-questionnaire/1"       -> Demographics
-    "/programming-practice-questionnaire/2"       -> Likert
-    "/programming-practice-questionnaire/3"       -> QSort
-    "/programming-practice-questionnaire/success" -> Submission
-    _                                             -> Error
+updatePage { fragment } =
+  case fragment of
+    Nothing         -> Info
+    Just "info"     -> Info
+    Just "consent"  -> Consent
+    Just "1"        -> Demographics
+    Just "2"        -> Likert
+    Just "3"        -> QSort
+    Just "success"  -> Submission
+    Just _          -> Error
 
 updateMultipleChoice : (MultipleChoice -> MultipleChoice) -> Int -> Model -> Model
 updateMultipleChoice updateF j model =

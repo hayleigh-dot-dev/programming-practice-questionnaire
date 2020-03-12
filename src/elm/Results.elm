@@ -108,11 +108,7 @@ view : Model -> Browser.Document Msg
 view model =
   { title = ""
   , body =
-    [ model.partialResponses
-        |> List.map .demographics
-        |> List.map toDemographicData
-        |> Debug.toString
-        |> Html.text
+    [ Html.text "Nothing to see here, move along."
     ]
   }
 

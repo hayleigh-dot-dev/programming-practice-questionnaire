@@ -588,7 +588,7 @@ viewQSortItem selectMsg sortMsg selectedStatement (n, s) =
   case s of
     Just ({ key } as statement) ->
       Html.li
-        [ A.class "w-full mb-2 h-10 hover:bg-blue-500 rounded flex content-center items-center align-center" 
+        [ A.class "w-full mb-2 h-10 hover:bg-blue-500 rounded flex content-center items-center align-center cursor-pointer" 
         , if selectedStatement == s then
             A.class "bg-blue-300"
           else
@@ -601,7 +601,7 @@ viewQSortItem selectMsg sortMsg selectedStatement (n, s) =
 
     Nothing ->
       Html.li
-        [ A.class "w-full mb-2 h-10 bg-gray-400 hover:bg-gray-500 rounded flex content-center align-center" 
+        [ A.class "w-full mb-2 h-10 bg-gray-400 hover:bg-gray-500 rounded flex content-center align-center cursor-pointer" 
         , E.onClick (sortMsg n)
         ] []
 

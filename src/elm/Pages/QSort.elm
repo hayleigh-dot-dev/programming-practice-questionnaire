@@ -42,7 +42,7 @@ view model { itemSelected, itemRated, itemSorted, stepForward, stepBackward } =
           <| "flex-1 mr-10 bg-transparent hover:bg-blue-500 text-blue-700 "
           ++ "font-semibold hover:text-white py-2 px-4 border border-blue-500 "
           ++ "hover:border-transparent rounded"
-      , Html.Attributes.href "/programming-practice-questionnaire/2" 
+      , Html.Attributes.href "#2" 
       ]
       [ Html.text "back" ]
     , if Data.QSort.isComplete model.qsort then
@@ -50,7 +50,7 @@ view model { itemSelected, itemRated, itemSorted, stepForward, stepBackward } =
           [ Html.Attributes.class 
               <| "flex-1 ml-10 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 "
               ++ "px-4 rounded"
-          , Html.Attributes.href "/programming-practice-questionnaire/success"
+          , Html.Attributes.href "#success"
           ]
           [ Html.text "submit" ]
       else

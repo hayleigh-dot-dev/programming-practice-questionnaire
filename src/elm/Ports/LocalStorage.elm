@@ -1,5 +1,8 @@
 port module Ports.LocalStorage exposing
-  ( ..
+  ( Action, ResponseType, Response (..), Sequence
+  , sequence, chain, commit, commitAction
+  , onResponse
+  , batch, clear, expectJson, read, write
   )
 
 {- Imports ------------------------------------------------------------------ -}

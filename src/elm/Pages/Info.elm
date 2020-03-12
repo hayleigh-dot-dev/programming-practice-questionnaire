@@ -162,7 +162,7 @@ view =
       [ Html.Attributes.class 
           <| "flex-1 ml-10 bg-blue-500 hover:bg-blue-700 text-white font-bold "
           ++ "py-2 px-4 rounded"
-      , Html.Attributes.href "/programming-practice-questionnaire/consent" 
+      , Html.Attributes.href "#consent" 
       ]
       [ Html.text "next" ]
     ]
