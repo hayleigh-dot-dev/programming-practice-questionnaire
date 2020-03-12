@@ -1,8 +1,8 @@
 module Data.MultipleChoice exposing
-  ( MultipleChoice, Option
+  ( MultipleChoice (..), Option
   , initSingleResponse, initSingleResponseWithOther, initMultipleResponse, initMultipleResponseWithOther
   , select, add
-  , toHtml
+  , toHtml, optionToString
   , encode, decoder
   )
 
@@ -190,6 +190,7 @@ toHtml multipleChoice { optionSelected, optionAdded } =
             , Html.input
               [ Html.Attributes.class "ml-2 my-2"
               , onEnter optionAdded
+              , onBlur optionAdded
               ] []
             ]
         )
@@ -220,6 +221,7 @@ toHtml multipleChoice { optionSelected, optionAdded } =
             , Html.input
               [ Html.Attributes.class "ml-2 my-2"
               , onEnter optionAdded
+              , onBlur optionAdded
               ] []
             ]
         )
@@ -272,9 +274,28 @@ onEnter handler =
       |> Json.Decode.andThen (\key ->
         if key == "Enter" then
           Json.Decode.at [ "target", "value" ] Json.Decode.string
-            |> Json.Decode.map handler
+            |> Json.Decode.andThen (\value ->
+              if String.isEmpty value then
+                Json.Decode.fail ""
+
+              else
+                Json.Decode.succeed (handler value)
+            )
         else
           Json.Decode.fail ""
+      )
+  )
+
+onBlur : (String -> msg) -> Attribute msg
+onBlur handler =
+  Html.Events.on "blur" (
+    Json.Decode.at [ "target", "value" ] Json.Decode.string
+      |> Json.Decode.andThen (\value ->
+        if String.isEmpty value then
+          Json.Decode.fail ""
+
+        else
+          Json.Decode.succeed (handler value)
       )
   )
 
